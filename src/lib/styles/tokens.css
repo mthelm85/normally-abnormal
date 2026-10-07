@@ -1,0 +1,39 @@
+:root {
+	/* Paper & ink */
+	--paper: #f5f1e7;
+	--paper-deep: #ece5d4;
+	/* Strength of the newsprint grain + mottling on the page (0 = flat paper). */
+	--paper-texture: 1;
+	--ink: #26221c;
+	--ink-soft: #4a443b;
+	--ink-faded: #7a7164;
+	--ink-ghost: #b9b09f;
+	--rule: #26221c;
+
+	/* Muted accents — the modern twist. Chart series use these in order. */
+	--oxblood: #8e3b33;
+	--slate: #3e5c76;
+	--ochre: #a97c2c;
+	--moss: #5d6e43;
+	--plum: #6c4a66;
+
+	--series-0: var(--ink);
+	--series-1: var(--oxblood);
+	--series-2: var(--slate);
+	--series-3: var(--ochre);
+	--series-4: var(--moss);
+	--series-5: var(--plum);
+	--accent: var(--oxblood);
+
+	/* Type */
+	--font-masthead: 'Birmingham Titling', serif; /* masthead only — never reuse */
+	--font-head: 'Playfair Display', Georgia, serif;
+	--font-body: 'EB Garamond', Georgia, serif;
+	--font-type: 'Typewriter Condensed', 'Courier New', monospace;
+	--font-sans: 'Lato', system-ui, sans-serif;
+
+	/* Measures */
+	--measure: 66ch;
+	--page-max: 1440px;
+	--gutter: clamp(16px, 3vw, 32px);
+}

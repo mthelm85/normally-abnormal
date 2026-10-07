@@ -1,0 +1,223 @@
+@import './fonts.css';
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	overflow-y: scroll;
+	scrollbar-gutter: stable;
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--font-body);
+	font-size: 1.25rem;
+	line-height: 1.5;
+	font-variant-numeric: oldstyle-nums proportional-nums;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	position: relative;
+}
+
+/* Newsprint: a fine grain over slow, uneven mottling, both barely there.
+   Generated SVG noise (no image files); it scrolls with the page like paper. */
+body::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	opacity: var(--paper-texture);
+	background-image:
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .15 0 0 0 0 .13 0 0 0 0 .1 .09 0 0 0 -.025'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .33 0 0 0 0 .2 .16 0 0 0 -.06'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	margin: 0 0 0.4em;
+	line-height: 1.12;
+	font-weight: 700;
+}
+
+p {
+	margin: 0 0 1em;
+}
+
+a {
+	color: inherit;
+}
+
+img,
+svg {
+	display: block;
+	max-width: 100%;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+}
+
+::selection {
+	background: color-mix(in srgb, var(--ochre) 35%, transparent);
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* ——— Rules ——— */
+.rule-double {
+	border: 0;
+	border-top: 3px solid var(--rule);
+	border-bottom: 1px solid var(--rule);
+	height: 6px;
+	margin: 0;
+}
+.rule-thin {
+	border: 0;
+	border-top: 1px solid var(--rule);
+	margin: 0;
+}
+
+.typewriter {
+	font-family: var(--font-type);
+	letter-spacing: 0.02em;
+}
+.smallcaps {
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.08em;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+/* ——— Article prose ——— */
+/* Figures always start below a drop cap. */
+.prose figure {
+	clear: both;
+}
+.prose {
+	max-width: var(--measure);
+	margin: 0 auto;
+	hyphens: auto;
+	text-align: justify;
+	text-wrap: pretty;
+}
+/* Book paragraphs: no gap between them, and each one indented, except the
+   chapter's opening paragraph and the first paragraph after a heading. */
+.prose > p {
+	margin: 0;
+	text-indent: 1.5em;
+}
+.prose > p:first-of-type,
+.prose > :is(h2, h3, h4, h5, h6) + p {
+	text-indent: 0;
+}
+/* Drop cap: the first letter of a chapter, marked up at build time
+   (src/lib/build/dropcap.js) so a leading quotation mark stays text-size. */
+.prose .dropcap {
+	float: left;
+	font-family: var(--font-head);
+	font-weight: 900;
+	font-size: 4.6em;
+	line-height: 0.82;
+	padding: 0.06em 0.08em 0 0;
+	margin-top: 0.04em;
+}
+.prose .dropcap-q {
+	font-family: var(--font-body);
+	font-weight: 400;
+	font-size: 0.24em;
+	vertical-align: top;
+	line-height: 1;
+	margin-right: 0.08em;
+}
+/* Fallback for pages built without the plugin. */
+.prose > p:first-of-type:not(:has(.dropcap))::first-letter {
+	float: left;
+	font-family: var(--font-head);
+	font-weight: 900;
+	font-size: 4.6em;
+	line-height: 0.82;
+	padding: 0.06em 0.08em 0 0;
+	margin-top: 0.04em;
+}
+.prose h2,
+.prose h3,
+.prose h4 {
+	font-family: var(--font-head);
+	text-align: center;
+	margin: 1.8em 0 0.8em;
+	text-wrap: balance;
+}
+.prose h4 {
+	font-size: 1.1em;
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.08em;
+}
+.prose h4::after {
+	content: '';
+	display: block;
+	width: 3rem;
+	margin: 0.35em auto 0;
+	border-top: 1px solid var(--rule);
+}
+.prose a {
+	text-decoration: none;
+	border-bottom: 1px dotted var(--ink-faded);
+	transition: border-color 0.2s;
+}
+.prose a:hover {
+	border-bottom: 1px solid var(--accent);
+}
+.prose ul,
+.prose ol {
+	padding-left: 1.4em;
+	margin: 0.9em 0 1.2em;
+	text-align: left;
+}
+.prose li {
+	margin-bottom: 0.35em;
+}
+.prose ul {
+	list-style: disc;
+}
+.prose blockquote {
+	margin: 1.5em 0;
+	padding: 0.4em 1.2em;
+	border-left: 3px double var(--rule);
+	font-style: italic;
+}
+.prose code {
+	font-family: var(--font-type);
+	font-size: 0.9em;
+}
+
+/* Math (KaTeX): a touch smaller so it sits evenly beside Garamond. */
+.prose .katex {
+	font-size: 1.05em;
+}
+.prose .katex-display {
+	margin: 1em 0;
+}

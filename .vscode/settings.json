@@ -1,0 +1,9 @@
+{
+	"files.associations": { "*.svx": "markdown" },
+	"[markdown]": {
+		"editor.wordWrap": "on"
+	},
+	"ltex.enabled": ["markdown"],
+	"ltex.language": "en-US",
+	"cSpell.enableFiletypes": ["!markdown"]
+}

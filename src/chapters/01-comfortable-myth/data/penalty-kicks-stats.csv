@@ -1,0 +1,8 @@
+stat,value
+p,0.75
+n,1000.0
+goals_first_40,27.0
+share_after_10,0.8
+share_after_40,0.675
+share_after_100,0.75
+share_after_1000,0.734

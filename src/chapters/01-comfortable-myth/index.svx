@@ -1,0 +1,71 @@
+---
+number: 1
+title: "The Average Millionaire"
+summary: "Why we ask for the average, where it makes sense to use it, and the fine print."
+---
+
+<script>
+	import { Density, RunningAverage } from '#charts';
+	import { Note } from '#lib/notes/index.js';
+	import netWorth from './data/net-worth.csv';
+	import stats from './data/net-worth-stats.csv';
+	const s = Object.fromEntries(stats.map((r) => [r.stat, r.value]));
+	import kicks from './data/penalty-kicks.csv';
+	import kickStats from './data/penalty-kicks-stats.csv';
+	const k = Object.fromEntries(kickStats.map((r) => [r.stat, r.value]));
+</script>
+
+## Not So Average After All
+
+“Hey, Matt. You’re a data guy, right?” I shrugged and nodded at the same time, acknowledging that I *am* a data guy, but I was reluctant to allow myself to be reduced to such a singular description. “What’s the average net worth of an American family?” Having recently read the Federal Reserve’s 2022 release of its *Survey of Consumer Finances*, I responded, “The *average* net worth was a little more than $1 million in 2022, but…” Before I could qualify my answer, Martin, a colleague with whom several others and I were having lunch, contorted his face into a look representing some mixture of confusion, disbelief, and apprehension as he exclaimed, “What!?! There’s no way that’s true!” I calmly finished my statement by saying, “…the *median* net worth was only about $192,000.” 
+
+Martin looked relieved. He was about five years away from retirement, and didn’t mind telling us that a rough estimate of his own net worth comfortably exceeded that figure. 
+
+“So, I’m above average! Not bad!” he declared. Not wanting to come across as pedantic or fastidious, I left it there.
+
+I’ve had many similar conversations over the course of my career as a data scientist, and I’ve found that people have a strong desire or need to summarize and compress information into a single value, particularly for purposes of comparison. It’s just easier to reason about a problem when we can compare \( x \) to \( y \) and see which one is larger or smaller. Our brains summarize automatically, and we can only hold a small handful of items in our short-term memory. Psychologists once put the number at seven, plus or minus two, but the modern estimate is closer to just four.<Note>George A. Miller, “The Magical Number Seven, Plus or Minus Two: Some Limits on Our Capacity for Processing Information,” <em>Psychological Review</em> 63, no. 2 (1956): 81–97; Nelson Cowan, “The Magical Number 4 in Short-Term Memory: A Reconsideration of Mental Storage Capacity,” <em>Behavioral and Brain Sciences</em> 24, no. 1 (2001): 87–114.</Note> Either way, it’s not a lot. Given this constraint, it makes sense for us to condense information into a single value to not overload our minds as we work through a problem. 
+
+The trouble with Martin’s question is that wealth is not normally distributed. Around 7.5% of families have negative net worth, most have a relatively small net worth, while a tiny fraction of American families are worth billions of dollars. If we plot the probability density of the American family wealth distribution using the Fed’s 2022 data, as well as the average (mean) and median values, it looks like this:
+
+<Density
+	data={netWorth}
+	x="x"
+	y="density"
+	below="share_below"
+	xLabel="Net worth"
+	xFormat="$.3~s"
+	markers={[{ x: s.median, label: 'Median' }, { x: s.mean, label: 'Mean' }]}
+	title="Net Worth of U.S. Families, 2022"
+	source="Federal Reserve, Survey of Consumer Finances"
+	period="2022"
+	note="Families worth more than $2.5 million extend off the right edge"
+/>
+
+The line in the chart above shows how common net worths near each value on the horizontal axis are. In other words, the higher the line goes, the more families it represents. Notice that the plot is cut off at a value of $2.5 million. The wealthiest family in the survey's public data was worth approximately $2.4 billion. To show that value on this page with a linear scale would require *very* wide pages. In fact, if the distance from $0 to the $2.5 million mark measures four inches on your page, the $2.4 billion mark would lie 320 feet away --- more than the length of a football field! Observe also that the difference between the median and the mean is around $867,000. This shows the importance of not conflating the concepts of mean and median, as Martin did in the conversation above.
+
+So what do we mean, then, when we ask about the average? What we probably want to know is what's *typical* or *most common*, and that's often very different from the statistical mean. Looking at the distribution of net worth above, most of us would probably consider some value close to the peak as being the most representative of an American family's net worth. In that case, we might consider the *mode* of the distribution, or the most frequently occurring value. In this case, the mode is just a few thousand dollars. 
+
+There's a problem with this, though. Only about one out of every seven families have a net worth less than the mode, so does it make sense to call the mode the most representative when only a small portion of U.S. families have a net worth below it and the vast majority of families have a net worth that exceeds it? 
+
+This is precisely the challenge that arises when trying to characterize non-normally distributed data with a single summary statistic. Take a minute to think about the median and mean values in the chart above. Does either of those values seem more or less representative than the other of the typical American family's net worth?
+
+Maybe the problem is that for certain distributions, the very idea of a characteristic, typical, usual, or common value simply doesn't apply. What do we do in these cases, given our limited capacity to store information in our working memory? These questions and ideas, among others, are what we will explore throughout the rest of the book. Before we begin digging into these issues, let's take a look at how normally distributed data arise, and why simple averages do a good job of summarizing them.
+
+## True or False
+
+There are many processes that can be measured with a simple binary outcome: either true or false, yes or no, success or failure, etc. Businesses market to customers via email campaigns and a customer either opens the email, or doesn't. Website visitors either make a purchase, or they leave without buying anything. In quality control processes, a product passes a quality test, or it fails. Applications for credit are approved or they are denied. Soccer players taking penalty kicks either score, or they don't.
+
+Statisticians call these kinds of processes *Bernoulli trials*, named after the great 17th-century Swiss mathematician, Jacob Bernoulli. If we record each success as a \( 1 \), and each failure as a \( 0 \), the average is nothing more than the proportion of successes, calculated by taking the sum (of all the ones in this case), and dividing it by the total number of trials. As the number of trials increases, that proportion settles towards the true probability of success, often represented as \( p \). The plot below shows this:
+
+<RunningAverage
+	data={kicks}
+	p={k.p}
+	strip={40}
+	unit="kicks"
+	successLabel="Scored"
+	failureLabel="Missed"
+	notes={[{ x: 26, text: 'a slump: 62% after 26 kicks', dx: 18, dy: 22 }]}
+	title="The Share of Goals Settles Toward p"
+	source="Simulated"
+	note="1,000 penalty kicks by a player who scores 75% of the time"
+/>

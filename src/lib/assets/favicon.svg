@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Rounded rectangle with background color #f5f1e7 -->
+  <rect width="100" height="100" rx="15" ry="15" fill="#f5f1e7"/>
+
+  <!-- Stylized "D" letters in italic for vintage feel -->
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="60" font-family="Georgia, serif" fill="black" letter-spacing="-5">DD</text>
+</svg>
+
+
