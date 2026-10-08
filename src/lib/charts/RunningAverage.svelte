@@ -1,21 +1,23 @@
 <!--
-	Running average of yes-or-no outcomes (Bernoulli trials): a strip of the
-	first few outcomes as filled and open marks, and below it the running share
-	of successes settling toward the true probability p.
+	Running average of yes-or-no outcomes (Bernoulli trials), in two panels that
+	share one value axis:
+	  1. the first few trials, each outcome drawn as a mark directly above its
+	     point on the running line, so every miss and hit visibly moves it;
+	  2. every trial, with the first panel's stretch shaded, as the running
+	     share settles toward the true probability p.
 
 	Data: one row per trial, in order, with the outcome (1 or 0) and the running
 	share of successes after that trial.
-	<RunningAverage data={kicks} trial="trial" outcome="outcome" running="running"
-		p={0.75} strip={40} successLabel="Scored" failureLabel="Missed" unit="kicks" />
+	<RunningAverage data={kicks} p={0.75} strip={40} unit="kicks"
+		successLabel="Scored" failureLabel="Missed" />
 -->
 <script lang="ts">
-	import { scaleLinear, scaleLog } from 'd3-scale';
+	import { scaleLinear } from 'd3-scale';
 	import { line as d3line } from 'd3-shape';
 	import Figure from './Figure.svelte';
 	import AxisX from './AxisX.svelte';
 	import AxisY from './AxisY.svelte';
 	import Tooltip from './Tooltip.svelte';
-	import { getMotion } from './motion.svelte';
 	import { type Row, checkColumns, fmtNumber } from './util';
 
 	interface RunNote {
@@ -33,18 +35,16 @@
 		running?: string;
 		/** the true probability of success, drawn as a dashed reference line */
 		p: number;
-		/** how many of the first outcomes to show as marks */
+		/** how many of the first trials the top panel shows */
 		strip?: number;
 		successLabel?: string;
 		failureLabel?: string;
 		/** what one trial is called, for labels: "kicks", "flips" */
 		unit?: string;
-		/** log scale on the trial axis (default true), so the early swings are visible */
-		log?: boolean;
 		/** bottom of the share axis; by default just low enough for the data and p */
 		yMin?: number;
+		/** notes on the running line; each goes in whichever panel can show it (top first) */
 		notes?: RunNote[];
-		height?: number;
 		title?: string;
 		subtitle?: string;
 		source?: string;
@@ -62,10 +62,8 @@
 		successLabel = 'Success',
 		failureLabel = 'Failure',
 		unit = 'trials',
-		log = true,
 		yMin,
 		notes = [],
-		height = 300,
 		title,
 		subtitle,
 		source,
@@ -73,86 +71,78 @@
 		note
 	}: Props = $props();
 
-	const uid = $props.id();
-	const motion = getMotion();
 	$effect(() => checkColumns('RunningAverage', data, [trial, outcome, running]));
 
 	const pct = (v: number) => `${Math.round(v * 100)}%`;
 	const n = $derived(data.length);
-	const shown = $derived(data.slice(0, Math.min(strip, n)));
+	const m = $derived(Math.min(strip, n));
+	const first = $derived(data.slice(0, m));
+	const one = $derived(unit.replace(/s$/, ''));
 
 	let w = $state(640);
 	const left = 44;
 	const right = 64;
 	const innerW = $derived(Math.max(10, w - left - right));
 
-	// ——— the strip of first outcomes ———
-	const step = $derived(innerW / Math.max(1, shown.length));
-	const r = $derived(Math.max(2.4, Math.min(6, step * 0.36)));
-	const stripTop = 10;
-	const stripH = $derived(2 * r + 6);
-	const gap = 34;
-
-	// ——— the running average ———
-	const top = $derived(stripTop + stripH + gap);
-	const bottom = 44;
-	const innerH = $derived(Math.max(60, height - top - bottom));
-	// (the share axis starts at `lo`, below)
-	const xScale = $derived(
-		log
-			? scaleLog()
-					.domain([1, Math.max(2, n)])
-					.range([0, innerW])
-			: scaleLinear()
-					.domain([1, Math.max(2, n)])
-					.range([0, innerW])
-	);
-	const xTicks = $derived(
-		log
-			? [1, 10, 100, 1000, 10000, 100000].filter((t) => t <= n)
-			: xScale.ticks(Math.max(2, Math.floor(innerW / 85)))
-	);
-	// Bottom of the axis: a quarter-step below both the lowest running share and p.
+	// ——— shared value axis ———
 	const lo = $derived.by(() => {
 		if (yMin !== undefined) return yMin;
-		let m = p;
-		for (const d of data) if (typeof d[running] === 'number') m = Math.min(m, d[running]);
-		return Math.max(0, Math.floor((m - 0.05) * 4) / 4);
+		let v = p;
+		for (const d of data) if (typeof d[running] === 'number') v = Math.min(v, d[running]);
+		return Math.max(0, Math.floor((v - 0.05) * 4) / 4);
 	});
-	const yScale = $derived(scaleLinear().domain([lo, 1]).range([innerH, 0]));
 	const yTicks = $derived([0, 0.25, 0.5, 0.75, 1].filter((t) => t >= lo - 1e-9));
-	const path = $derived(
+	const plotH = 150;
+	const yScale = $derived(scaleLinear().domain([lo, 1]).range([plotH, 0]));
+
+	// ——— panel geometry ———
+	const r = $derived(Math.max(2.4, Math.min(6, (innerW / Math.max(1, m)) * 0.36)));
+	const marksY = $derived(r + 2); // marks row, inside panel A
+	const lineTopA = $derived(2 * r + 22); // panel A's line area starts below the marks
+	const topA = 30;
+	const heightA = $derived(lineTopA + plotH + 40);
+	const topB = $derived(topA + heightA + 34);
+	const heightB = $derived(plotH + 44);
+	const totalH = $derived(topB + heightB + 6);
+
+	const xA = $derived(scaleLinear().domain([1, Math.max(2, m)]).range([0, innerW]));
+	const xB = $derived(scaleLinear().domain([1, Math.max(2, n)]).range([0, innerW]));
+	const ticksA = $derived([1, ...xA.ticks(Math.max(2, Math.floor(innerW / 70)))].filter((t, i, a) => t >= 1 && a.indexOf(t) === i && Number.isInteger(t)));
+	const ticksB = $derived([1, ...xB.ticks(Math.max(2, Math.floor(innerW / 85)))].filter((t, i, a) => t >= 1 && a.indexOf(t) === i && Number.isInteger(t)));
+
+	const lineFor = (x: (v: number) => number, rows: Row[]) =>
 		d3line<Row>()
-			.x((d) => xScale(d[trial]))
-			.y((d) => yScale(d[running]))(data) ?? ''
-	);
-	const xOf = (t: number) => xScale(Math.min(Math.max(t, 1), n));
+			.x((d) => x(d[trial]))
+			.y((d) => yScale(d[running]))(rows) ?? '';
+	const pathA = $derived(lineFor(xA, first));
+	const pathB = $derived(lineFor(xB, data));
 	const rowAt = (t: number) => data[Math.min(Math.max(Math.round(t), 1), n) - 1];
 
-	const placedNotes = $derived(
-		notes
-			.filter((nt) => nt.x >= 1 && nt.x <= n)
-			.map((nt) => ({
-				...nt,
-				px: xOf(nt.x),
-				py: yScale(rowAt(nt.x)[running]),
-				dx: nt.dx ?? 14,
-				dy: nt.dy ?? -30
-			}))
-	);
+	const notesA = $derived(notes.filter((nt) => nt.x >= 1 && nt.x <= m));
+	const notesB = $derived(notes.filter((nt) => nt.x > m && nt.x <= n));
+	const place = (nt: RunNote, x: (v: number) => number) => ({
+		...nt,
+		px: x(nt.x),
+		py: yScale(rowAt(nt.x)[running]),
+		dx: nt.dx ?? 14,
+		dy: nt.dy ?? -30
+	});
 
-	// ——— motion: the line draws left to right ———
-	const clipW = $derived(motion.reveal >= 1 ? innerW + right : motion.reveal * innerW + 1);
-
-	// ——— hover ———
-	let hover = $state<number | null>(null);
+	// ——— hover (either panel) ———
+	let hover = $state<{ panel: 'A' | 'B'; t: number } | null>(null);
 	let pointerY = $state(0);
-	function onmove(e: PointerEvent) {
-		const rect = (e.currentTarget as SVGRectElement).getBoundingClientRect();
-		const scale = innerW / rect.width;
-		hover = Math.min(Math.max(Math.round(xScale.invert((e.clientX - rect.left) * scale)), 1), n);
-		pointerY = (e.clientY - rect.top) * scale;
+	function mover(panel: 'A' | 'B') {
+		return (e: PointerEvent) => {
+			const rect = (e.currentTarget as SVGRectElement).getBoundingClientRect();
+			const scale = innerW / rect.width;
+			const x = panel === 'A' ? xA : xB;
+			const max = panel === 'A' ? m : n;
+			const t = Math.min(Math.max(Math.round(x.invert((e.clientX - rect.left) * scale)), 1), max);
+			hover = { panel, t };
+			pointerY = (e.clientY - rect.top) * scale + (panel === 'A' ? topA + lineTopA : topB);
+		};
 	}
+	const hoverX = $derived(hover ? (hover.panel === 'A' ? xA : xB)(hover.t) : 0);
 
 	const legend = $derived([
 		{ key: 'success', label: successLabel, color: 'var(--ink)', mark: 'dot' as const },
@@ -163,88 +153,83 @@
 <Figure {title} {subtitle} {source} {period} {note} {legend} toggleable={false}>
 	<div bind:clientWidth={w}>
 		<svg
-			viewBox="0 0 {w} {height}"
+			viewBox="0 0 {w} {totalH}"
 			width="100%"
 			role="img"
 			aria-label={title ?? `Running share of successes over ${n} ${unit}`}
 		>
-			<defs>
-				<clipPath id="{uid}-reveal">
-					<rect x={-left} y={-top} width={left + clipW} height={height} />
-				</clipPath>
-			</defs>
+			{#snippet truth(x2: number)}
+				<line class="truth" x1="0" {x2} y1={yScale(p)} y2={yScale(p)} />
+				<text class="truth-label" x={x2 + 6} y={yScale(p)} dy="0.32em">p = {pct(p)}</text>
+			{/snippet}
 
-			<!-- the first outcomes, one mark each -->
-			<g transform="translate({left},{stripTop})">
-				<text class="strip-label" x={0} y={-1}>First {shown.length} {unit}</text>
-				{#each shown as d, i (i)}
-					<circle
-						class="mark"
-						class:hit={d[outcome] === 1}
-						cx={step * (i + 0.5)}
-						cy={r + 6}
-						{r}
-					/>
+			{#snippet noteMark(nt: ReturnType<typeof place>)}
+				<g class="note">
+					<line x1={nt.px} y1={nt.py} x2={nt.px + nt.dx} y2={nt.py + nt.dy} />
+					<circle cx={nt.px} cy={nt.py} r="3" />
+					<text x={nt.px + nt.dx} y={nt.py + nt.dy - 4} text-anchor={nt.dx < 0 ? 'end' : 'start'}
+						>{nt.text}</text
+					>
+				</g>
+			{/snippet}
+
+			<!-- Panel A: the first few trials, marks aligned with the line below them -->
+			<g transform="translate({left},{topA})">
+				<text class="panel-title" x="0" y="-12">The first {m} {unit}</text>
+				{#each first as d, i (i)}
+					{@const cx = xA(d[trial])}
+					<line class="tie" x1={cx} x2={cx} y1={marksY + r + 2} y2={lineTopA - 4} />
+					<circle class="mark" class:hit={d[outcome] === 1} {cx} cy={marksY} {r} />
 				{/each}
-				<text class="strip-tally" x={innerW + 8} y={r + 6} dy="0.32em"
-					>{shown.filter((d) => d[outcome] === 1).length} of {shown.length}</text
+				<text class="tally" x={innerW + 8} y={marksY} dy="0.32em"
+					>{first.filter((d) => d[outcome] === 1).length} of {m}</text
 				>
+
+				<g transform="translate(0,{lineTopA})">
+					<AxisY scale={yScale} width={innerW} ticks={yTicks} format={pct} />
+					<AxisX scale={xA} height={plotH} width={innerW} ticks={ticksA} format={fmtNumber} label={`${unit[0].toUpperCase()}${unit.slice(1)} taken`} />
+					{@render truth(innerW)}
+					<path d={pathA} class="run" />
+					{#each first as d, i (i)}
+						<circle class="step" cx={xA(d[trial])} cy={yScale(d[running])} r="2" />
+					{/each}
+					{#each notesA as nt (nt.text)}{@render noteMark(place(nt, xA))}{/each}
+					{#if hover?.panel === 'A'}
+						<line class="rule" x1={hoverX} x2={hoverX} y1={-lineTopA + marksY} y2={plotH} />
+					{/if}
+					<rect class="hitbox" y={-lineTopA} width={innerW} height={plotH + lineTopA} role="presentation"
+						onpointermove={mover('A')} onpointerleave={() => (hover = null)} />
+				</g>
 			</g>
 
-			<g transform="translate({left},{top})">
-				<text class="axis-title" x="0" y="-14">Share of {unit} so far</text>
+			<!-- Panel B: every trial, the first panel's stretch shaded -->
+			<g transform="translate({left},{topB})">
+				<text class="panel-title" x="0" y="-12">All {fmtNumber(n)} {unit}</text>
+				<rect class="shade" x="0" y="0" width={xB(m)} height={plotH} />
+				<text class="shade-label" x={xB(m) + 5} y={plotH - 6}>first {m}</text>
 				<AxisY scale={yScale} width={innerW} ticks={yTicks} format={pct} />
-				<AxisX
-					scale={xScale}
-					height={innerH}
-					width={innerW}
-					ticks={xTicks}
-					format={fmtNumber}
-					label={`Number of ${unit}${log ? ' (log scale)' : ''}`}
-				/>
-
-				<line class="truth" x1="0" x2={innerW} y1={yScale(p)} y2={yScale(p)} />
-				<text class="truth-label" x={innerW + 6} y={yScale(p)} dy="0.32em">p = {pct(p)}</text>
-
-				<g clip-path="url(#{uid}-reveal)">
-					<path d={path} class="run" />
-				</g>
-
-				{#each placedNotes as nt (nt.text)}
-					<g class="note">
-						<line x1={nt.px} y1={nt.py} x2={nt.px + nt.dx} y2={nt.py + nt.dy} />
-						<circle cx={nt.px} cy={nt.py} r="3" />
-						<text x={nt.px + nt.dx} y={nt.py + nt.dy - 4} text-anchor={nt.dx < 0 ? 'end' : 'start'}
-							>{nt.text}</text
-						>
-					</g>
-				{/each}
-
-				{#if hover !== null}
-					{@const hx = xOf(hover)}
-					<line class="rule" x1={hx} x2={hx} y1="0" y2={innerH} />
-					<circle class="dot" cx={hx} cy={yScale(rowAt(hover)[running])} r="4" />
+				<AxisX scale={xB} height={plotH} width={innerW} ticks={ticksB} format={fmtNumber} label={`${unit[0].toUpperCase()}${unit.slice(1)} taken`} />
+				{@render truth(innerW)}
+				<path d={pathB} class="run" />
+				{#each notesB as nt (nt.text)}{@render noteMark(place(nt, xB))}{/each}
+				{#if hover?.panel === 'B'}
+					<line class="rule" x1={hoverX} x2={hoverX} y1="0" y2={plotH} />
+					<circle class="dot" cx={hoverX} cy={yScale(rowAt(hover.t)[running])} r="4" />
 				{/if}
-
-				<rect
-					class="hitbox"
-					width={innerW}
-					height={innerH}
-					role="presentation"
-					onpointermove={onmove}
-					onpointerleave={() => (hover = null)}
-				/>
+				<rect class="hitbox" width={innerW} height={plotH} role="presentation"
+					onpointermove={mover('B')} onpointerleave={() => (hover = null)} />
 			</g>
 		</svg>
 
-		{#if hover !== null}
-			{@const row = rowAt(hover)}
-			<Tooltip x={left + xOf(hover)} y={top + pointerY} width={w}>
-				<span class="tip-head">After {fmtNumber(hover)} {hover === 1 ? unit.replace(/s$/, '') : unit}</span>
+		{#if hover}
+			{@const row = rowAt(hover.t)}
+			<Tooltip x={left + hoverX} y={pointerY} width={w}>
+				<span class="tip-head">After {fmtNumber(hover.t)} {hover.t === 1 ? one : unit}</span>
+				{#if hover.panel === 'A'}
+					<span class="tip-row"><span>This {one}</span><b>{row[outcome] === 1 ? successLabel : failureLabel}</b></span>
+				{/if}
 				<span class="tip-row"><span>Share so far</span><b>{pct(row[running])}</b></span>
-				<span class="tip-row"
-					><span>{successLabel}</span><b>{fmtNumber(Math.round(row[running] * hover))}</b></span
-				>
+				<span class="tip-row"><span>{successLabel}</span><b>{fmtNumber(Math.round(row[running] * hover.t))} of {fmtNumber(hover.t)}</b></span>
 			</Tooltip>
 		{/if}
 	</div>
@@ -255,6 +240,12 @@
 		overflow: visible;
 		height: auto;
 	}
+	.panel-title {
+		font-family: var(--font-body);
+		font-style: italic;
+		font-size: 14px;
+		fill: var(--ink);
+	}
 	.mark {
 		fill: var(--paper);
 		stroke: var(--ink);
@@ -263,14 +254,12 @@
 	.mark.hit {
 		fill: var(--ink);
 	}
-	.strip-label,
-	.axis-title {
-		font-family: var(--font-body);
-		font-style: italic;
-		font-size: 13px;
-		fill: var(--ink-soft);
+	.tie {
+		stroke: var(--ink-ghost);
+		stroke-width: 0.7;
+		stroke-dasharray: 1 2;
 	}
-	.strip-tally {
+	.tally {
 		font-family: var(--font-type);
 		font-size: 12px;
 		fill: var(--ink-soft);
@@ -291,6 +280,19 @@
 		stroke: var(--ink);
 		stroke-width: 2.2;
 		stroke-linejoin: round;
+	}
+	.step {
+		fill: var(--ink);
+	}
+	.shade {
+		fill: var(--ink);
+		fill-opacity: 0.06;
+	}
+	.shade-label {
+		font-family: var(--font-body);
+		font-style: italic;
+		font-size: 12px;
+		fill: var(--ink-faded);
 	}
 	.note line {
 		stroke: var(--ink);

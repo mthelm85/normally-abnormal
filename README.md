@@ -1,6 +1,6 @@
 # Normally Abnormal
 
-*Why the Average Misleads, and What to Ask Instead* — a short book by Matt Helm,
+*Why Real-World Data So Rarely Follow a Bell Curve* — a short book by Matt Helm,
 built with SvelteKit 3 + Svelte 5 + mdsvex and fully prerendered. The chart kit and
 look are copied from The Data Dispatch.
 

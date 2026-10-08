@@ -1,6 +1,7 @@
 <!--
 	Density: a distribution's shape as hatched area under one ink curve, with
-	markers for the mean, median or mode, shaded ranges, and notes on the curve.
+	markers for the mean, median or mode, shaded ranges, labeled spans, and notes
+	on the curve.
 
 	Wide data on an evenly spaced grid: one row per x, one column per curve.
 	<Density data={rows} x="x" y="lognormal"
@@ -40,6 +41,16 @@
 		labelAt?: number;
 		/** nudge the label up (negative) or down, in px */
 		dy?: number;
+		/** add the dense hatch over the tint (default true); false gives a plain tint for nested ranges */
+		hatch?: boolean;
+	}
+
+	export interface Span {
+		/** start and end of the range on the x axis */
+		from: number;
+		to: number;
+		/** label set above the bracket, e.g. "68% of buckets" */
+		label?: string;
 	}
 
 	export interface DensityNote {
@@ -89,6 +100,8 @@
 		area?: boolean;
 		markers?: Marker[];
 		shade?: Shade[];
+		/** labeled brackets near the baseline (first is lowest), e.g. ±1 and ±2 SD */
+		spans?: Span[];
 		notes?: DensityNote[];
 		/** show density values on a left axis (default false: readers rarely need them) */
 		yAxis?: boolean;
@@ -124,6 +137,7 @@
 		area = true,
 		markers = [],
 		shade = [],
+		spans = [],
 		notes = [],
 		yAxis = false,
 		xDomain,
@@ -216,8 +230,8 @@
 		return m || 1;
 	});
 
-	const left = $derived(compact || !yAxis ? 4 : 44);
-	const right = $derived(compact ? 4 : 14);
+	const left = $derived(compact ? 4 : yAxis ? 44 : 16);
+	const right = $derived(compact ? 4 : 16);
 	const innerW = $derived(Math.max(10, w - left - right));
 	const xScale = $derived(scaleLinear().domain(xExtent).range([0, innerW]));
 
@@ -295,6 +309,17 @@
 				return { ...s, i, k, x0, x1, lx, ly };
 			})
 			.filter((s) => s !== null)
+	);
+
+	const placedSpans = $derived(
+		spans
+			.map((sp, i) => {
+				const x0 = xScale(Math.max(sp.from, xExtent[0]));
+				const x1 = xScale(Math.min(sp.to, xExtent[1]));
+				if (x1 <= x0) return null;
+				return { ...sp, i, x0, x1, y: innerH - 18 - i * 28 };
+			})
+			.filter((v) => v !== null)
 	);
 
 	const placedNotes = $derived(
@@ -380,7 +405,9 @@
 								style:fill={colorOf(s.k)}
 								style:fill-opacity={0.14}
 							/>
-							<path d={areaOf(s.k)} class="area" style:fill={hatch(keys.indexOf(s.k), true)} />
+							{#if s.hatch !== false}
+								<path d={areaOf(s.k)} class="area" style:fill={hatch(keys.indexOf(s.k), true)} />
+							{/if}
 						</g>
 						<line class="edge" x1={s.x0} x2={s.x0} y1={innerH} y2={yScale(at(s.k, xScale.invert(s.x0)))} />
 						<line class="edge" x1={s.x1} x2={s.x1} y1={innerH} y2={yScale(at(s.k, xScale.invert(s.x1)))} />
@@ -420,6 +447,19 @@
 									y={ly}
 									text-anchor="middle">{m.text}</text
 								>
+							{/if}
+						</g>
+					{/if}
+				{/each}
+
+				{#each placedSpans as sp (sp.i)}
+					{#if !compact && inked(sp.x1)}
+						<g class="span">
+							<line x1={sp.x0} x2={sp.x1} y1={sp.y} y2={sp.y} />
+							<line x1={sp.x0} x2={sp.x0} y1={sp.y - 4} y2={sp.y + 4} />
+							<line x1={sp.x1} x2={sp.x1} y1={sp.y - 4} y2={sp.y + 4} />
+							{#if sp.label}
+								<text x={(sp.x0 + sp.x1) / 2} y={sp.y - 5} text-anchor="middle">{sp.label}</text>
 							{/if}
 						</g>
 					{/if}
@@ -543,6 +583,19 @@
 		paint-order: stroke;
 		stroke: var(--paper);
 		stroke-width: 3px;
+	}
+	.span line {
+		stroke: var(--ink);
+		stroke-width: 0.9;
+	}
+	.span text {
+		font-family: var(--font-body);
+		font-style: italic;
+		font-size: 14px;
+		fill: var(--ink);
+		paint-order: stroke;
+		stroke: var(--paper);
+		stroke-width: 4px;
 	}
 	.note line {
 		stroke: var(--ink);

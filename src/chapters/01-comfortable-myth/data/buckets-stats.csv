@@ -1,0 +1,13 @@
+stat,value
+sd_1,0.4311
+within_5pts_1,0.0
+at_p_1,NaN
+sd_12,0.125
+within_5pts_12,0.264
+at_p_12,0.264
+sd_40,0.068
+within_5pts_40,0.643
+at_p_40,0.15
+sd_100,0.0431
+within_5pts_100,0.797
+at_p_100,0.094

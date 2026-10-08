@@ -15,6 +15,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { hatch } from './util';
+	import { getFigureNumber } from './figure-number';
 
 	let {
 		title,
@@ -48,13 +49,16 @@
 		hidden = next;
 	}
 
+	const fig = getFigureNumber();
+
 	const hatchIndex = (color: string) => Number(color.match(/series-(\d)/)?.[1] ?? 0);
 </script>
 
-<figure class="figure" class:compact>
-	{#if title && !compact}
+<figure class="figure" class:compact id={compact ? undefined : fig?.id}>
+	{#if (title || fig) && !compact}
 		<figcaption class="head">
-			<span class="title">{title}</span>
+			{#if fig}<span class="fignum">Figure {fig.n}</span>{/if}
+			{#if title}<span class="title">{title}</span>{/if}
 			{#if subtitle}<span class="subtitle">{subtitle}</span>{/if}
 		</figcaption>
 	{/if}
@@ -136,6 +140,16 @@
 		flex-direction: column;
 		gap: 0.1rem;
 		margin-bottom: 0.4rem;
+	}
+	.figure {
+		scroll-margin-top: 1.5rem;
+	}
+	.fignum {
+		font-family: var(--font-type);
+		font-size: 0.8rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--accent);
 	}
 	.title {
 		font-family: var(--font-head);

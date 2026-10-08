@@ -134,5 +134,66 @@ function fig_penalty_kicks(; p = 0.75, n = 1_000)
     end
 end
 
+# ——— Figure 1.3: buckets of kicks ———
+#
+# Split the kicking into buckets of n kicks and record the share of goals in
+# each. Small buckets give wildly different shares; big buckets bunch tightly
+# around p, and the histogram of shares takes on the bell shape of the Normal
+# curve (the central limit theorem). Bucket sizes are chosen so a share of
+# exactly p is possible (12 kicks: 9 of 12 = 75%). The curve, drawn over the
+# larger buckets only, is
+# Normal(p, sqrt(p(1-p)/n)), scaled to bar heights (bars are 1/n apart).
+
+function fig_buckets(; p = 0.75, sizes = [1, 12, 40, 100], curve_from = 40, buckets = 10_000)
+    rng = chapter_rng(CH; stream = 3)
+    size_col, share_col, freq_col = Int[], Float64[], Float64[]
+    stat_names, stat_values = String[], Float64[]
+    for n in sizes
+        goals = [count(<(p), rand(rng, n)) for _ in 1:buckets]
+        for k in 0:n
+            push!(size_col, n); push!(share_col, k / n); push!(freq_col, count(==(k), goals) / buckets)
+        end
+        shares = goals ./ n
+        within = count(s -> abs(s - p) <= 0.05 + 1e-9, shares) / buckets   # tolerance: 0.70 and 0.80 count
+        hit = p * n                                 # goals for a share of exactly p
+        at_p = isinteger(hit) ? count(==(Int(hit)), goals) / buckets : NaN
+        push!(stat_names, "sd_$n", "within_5pts_$n", "at_p_$n")
+        push!(stat_values, round(std(shares); digits = 4), round(within; digits = 3), round(at_p; digits = 3))
+        println("buckets of ", lpad(n, 3), " kicks: sd of shares = ", fmt(100 * std(shares)),
+                " pts; within 5 pts of p: ", fmt(100 * within), "%",
+                isnan(at_p) ? "" : "; exactly at p: " * fmt(100 * at_p) * "%")
+    end
+    write_csv(CH, "buckets", "size" => size_col, "share" => share_col, "freq" => freq_col)
+    write_csv(CH, "buckets-stats", "stat" => stat_names, "value" => stat_values)
+
+    curve_size, curve_x, curve_y = Int[], Float64[], Float64[]
+    for n in sizes
+        n < curve_from && continue
+        d = Normal(p, sqrt(p * (1 - p) / n))
+        for x in range(0, 1; length = 401)
+            push!(curve_size, n); push!(curve_x, x); push!(curve_y, pdf(d, x) / n)
+        end
+    end
+    write_csv(CH, "buckets-normal", "size" => curve_size, "share" => curve_x, "freq" => curve_y)
+end
+
+# ——— Figure 1.4: the bell the buckets approach ———
+#
+# The normal curve for buckets of n = 100 kicks: mean p and standard deviation
+# sqrt(p(1 - p)/n), about 4.3 percentage points. Its mean, median and mode are
+# all p. No randomness here, so no rng stream.
+function fig_bell(; p = 0.75, n = 100)
+    d = Normal(p, sqrt(p * (1 - p) / n))
+    xs = round.(range(0.55, 0.95; length = 401); digits = 4)
+    density_csv(CH, "bell", xs, "density" => d)
+    sd = std(d)
+    within(k) = cdf(d, p + k * sd) - cdf(d, p - k * sd)
+    write_csv(CH, "bell-stats",
+        "stat" => ["mean", "median", "mode", "sd", "within_1sd", "within_2sd"],
+        "value" => [mean(d), median(d), mode(d), sd, within(1), within(2)])
+end
+
 fig_net_worth()
 fig_penalty_kicks()
+fig_buckets()
+fig_bell()

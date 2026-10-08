@@ -6,7 +6,7 @@ import type { Component } from 'svelte';
 
 export const BOOK = {
 	title: 'Normally Abnormal',
-	subtitle: 'Why the Average Misleads, and What to Ask Instead',
+	subtitle: 'Why Real-World Data So Rarely Follow a Bell Curve',
 	author: 'Matt Helm'
 };
 

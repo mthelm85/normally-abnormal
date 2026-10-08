@@ -1,6 +1,7 @@
 import { mdsvex } from 'mdsvex';
 import dropcap from './src/lib/build/dropcap.js';
 import math from './src/lib/build/math.js';
+import figures from './src/lib/build/figures.js';
 import adapter from '@sveltejs/adapter-vercel';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
@@ -30,6 +31,7 @@ export default defineConfig({
 			},
 			adapter: adapter(),
 			preprocess: [
+				figures(),
 				math(),
 				mdsvex({
 					extensions: ['.svx', '.md'],
