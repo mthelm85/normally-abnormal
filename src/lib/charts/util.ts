@@ -93,3 +93,11 @@ export function checkColumns(chart: string, data: Row[], columns: (string | unde
 			`[${chart}] no column ${missing.map((m) => `"${m}"`).join(', ')}. Columns are: ${have.join(', ')}`
 		);
 }
+
+/**
+ * True when the page is being drawn for the print edition (scripts/print.mjs
+ * opens chapters with ?print). Charts can use it to pick a layout that suits a
+ * printed page, such as side-by-side panels at a narrow width.
+ */
+export const printing = () =>
+	typeof location !== 'undefined' && new URLSearchParams(location.search).has('print');

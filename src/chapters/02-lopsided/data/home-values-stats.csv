@@ -1,0 +1,12 @@
+stat,value
+mean,500766.13424567593
+median,350000.0
+mode,267500.0
+share_below_mean,0.7064618498969139
+p10,120000.0
+p25,220000.0
+p75,600000.0
+p90,900000.0
+records,828963.0
+homes,7.1298654e7
+share_at_topcode,0.0

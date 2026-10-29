@@ -1,4 +1,4 @@
-# Chapter 1 -- The Comfortable Myth
+# Chapter 1 -- The Average Millionaire
 #
 #     cd julia
 #     julia --project ch01.jl

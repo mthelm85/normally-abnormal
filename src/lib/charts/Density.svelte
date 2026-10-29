@@ -25,7 +25,12 @@
 		series?: string;
 		/** print the value after the label (default true) */
 		value?: boolean;
-		dashed?: boolean;
+		/** a solid stem instead of the default dashed one */
+		solid?: boolean;
+		/** which side of the stem the label runs to (default: centered on it) */
+		align?: 'left' | 'right' | 'center';
+		/** label row, 0 nearest the plot; omitted = placed automatically to avoid overlaps */
+		row?: number;
 	}
 
 	export interface Shade {
@@ -65,7 +70,7 @@
 </script>
 
 <script lang="ts">
-	import { scaleLinear } from 'd3-scale';
+	import { scaleLinear, scaleLog } from 'd3-scale';
 	import { area as d3area, curveMonotoneX, line as d3line } from 'd3-shape';
 	import { bisector, extent } from 'd3-array';
 	import Figure from './Figure.svelte';
@@ -107,6 +112,13 @@
 		yAxis?: boolean;
 		/** crop the x axis */
 		xDomain?: [number | null, number | null];
+		/**
+		 * 'log' spaces the x axis by ratios (each tick a multiple of the last). Pass a
+		 * density per unit of log(x) as `y` so areas still read as shares.
+		 */
+		xType?: 'linear' | 'log';
+		/** explicit x tick values (handy on a log axis) */
+		xTicks?: number[];
 		xLabel?: string;
 		xFormat?: Fmt;
 		yFormat?: Fmt;
@@ -115,9 +127,10 @@
 		/**
 		 * column holding the true share of the whole distribution below each x.
 		 * Use it when the plot crops a tail; otherwise the share is computed from
-		 * the plotted curve alone.
+		 * the plotted curve alone. One column applies to the first curve; to give
+		 * every curve its own, map each curve to a column: { a: 'a_below', … }.
 		 */
-		below?: string;
+		below?: string | Record<string, string>;
 		height?: number;
 		compact?: boolean;
 		title?: string;
@@ -141,6 +154,8 @@
 		notes = [],
 		yAxis = false,
 		xDomain,
+		xType = 'linear',
+		xTicks,
 		xLabel,
 		xFormat,
 		yFormat,
@@ -159,7 +174,11 @@
 	const motion = getMotion();
 
 	const keys = $derived(asArray(y));
-	$effect(() => checkColumns('Density', data, [x, ...asArray(y), below]));
+	const belowOf = (k: string) =>
+		typeof below === 'string' ? (k === keys[0] ? below : undefined) : below?.[k];
+	$effect(() =>
+		checkColumns('Density', data, [x, ...asArray(y), ...asArray(y).map((k) => belowOf(k))])
+	);
 	let hidden = $state(new Set<string>());
 	const shown = $derived(keys.filter((k) => !hidden.has(k)));
 	const colorOf = (k: string) => colors?.[keys.indexOf(k)] ?? seriesColor(keys.indexOf(k));
@@ -185,7 +204,9 @@
 		for (let i = 1; i < n; i++) {
 			const a = data[i - 1];
 			const b = data[i];
-			const dx = b[x] - a[x];
+			// On a log axis the curve is a density per unit of log(x), so its area
+			// is measured in log steps; in dollar steps the shares would drift right.
+			const dx = xType === 'log' ? Math.log(b[x] / a[x]) : b[x] - a[x];
 			total += ((a[k] + b[k]) / 2) * dx;
 			moment += ((a[x] * a[k] + b[x] * b[k]) / 2) * dx;
 			cum[i] = total;
@@ -213,7 +234,8 @@
 		return lerp(get(i - 1), get(i), (v - a) / (b - a || 1));
 	}
 	const shareBelow = (k: string, v: number) => {
-		if (below && k === keys[0]) return at(below, v);
+		const col = belowOf(k);
+		if (col) return at(col, v);
 		return summary[k].total > 0 ? at(k, v, summary[k].cum) / summary[k].total : 0;
 	};
 
@@ -233,7 +255,11 @@
 	const left = $derived(compact ? 4 : yAxis ? 44 : 16);
 	const right = $derived(compact ? 4 : 16);
 	const innerW = $derived(Math.max(10, w - left - right));
-	const xScale = $derived(scaleLinear().domain(xExtent).range([0, innerW]));
+	const xScale = $derived(
+		xType === 'log'
+			? scaleLog().domain(xExtent).range([0, innerW])
+			: scaleLinear().domain(xExtent).range([0, innerW])
+	);
 
 	// ——— markers: where they sit, and which label row keeps them apart ———
 	const LABEL_SIZE = 11;
@@ -247,16 +273,25 @@
 				if (v < xExtent[0] || v > xExtent[1]) return null;
 				const name = m.label ?? (typeof m.x === 'string' ? m.x[0].toUpperCase() + m.x.slice(1) : '');
 				const text = m.value === false ? name : name ? `${name} · ${fx(v)}` : fx(v);
-				return { ...m, k, v, text, px: xScale(v), row: 0 };
+				return { ...m, k, v, text, px: xScale(v), fixedRow: m.row, row: 0, eff: m.align ?? 'center', tw: 0 };
 			})
 			.filter((m) => m !== null)
 			.sort((a, b) => a.px - b.px);
 		const rightEdge: number[] = [];
 		for (const m of out) {
-			const half = textWidth(m.text, LABEL_SIZE) / 2 + 6;
-			let row = 0;
-			while (rightEdge[row] !== undefined && m.px - half < rightEdge[row]) row++;
-			rightEdge[row] = m.px + half;
+			const tw = textWidth(m.text, LABEL_SIZE) + 6;
+			// A label that would run off the chart's edge is centered over its
+			// stem instead (and kept inside the edge), as on a narrow phone or page.
+			let align = m.align ?? 'center';
+			if (align === 'left' && m.px - tw - 4 < 2 - left) align = 'center';
+			if (align === 'right' && m.px + tw + 4 > innerW + right - 2) align = 'center';
+			m.eff = align;
+			m.tw = tw;
+			const lo = align === 'left' ? m.px - tw - 4 : align === 'right' ? m.px - 4 : m.px - tw / 2;
+			const hi = align === 'left' ? m.px + 4 : align === 'right' ? m.px + tw + 4 : m.px + tw / 2;
+			let row = m.fixedRow ?? 0;
+			if (m.fixedRow === undefined) while (rightEdge[row] !== undefined && lo < rightEdge[row]) row++;
+			rightEdge[row] = Math.max(rightEdge[row] ?? -Infinity, hi);
 			m.row = row;
 		}
 		return out;
@@ -385,7 +420,7 @@
 				{#if yAxis && !compact}
 					<AxisY scale={yScale} width={innerW} ticks={yTicks} format={fy} {compact} />
 				{/if}
-				<AxisX scale={xScale} height={innerH} width={innerW} format={fx} label={xLabel} {compact} />
+				<AxisX scale={xScale} height={innerH} width={innerW} ticks={xTicks} format={fx} label={xLabel} {compact} />
 
 				<g clip-path="url(#{uid}-reveal)">
 					{#if area && shown.includes(keys[0])}
@@ -438,14 +473,18 @@
 					{@const ly = -10 - m.row * 15}
 					{#if inked(m.px)}
 						<g class="marker">
-							<line class="lead" x1={m.px} x2={m.px} y1={ly + 4} y2={py} />
-							<line class="stem" class:dashed={m.dashed} x1={m.px} x2={m.px} y1={py} y2={innerH} />
-							<circle cx={m.px} cy={py} r="3.5" />
+							<!-- one line from the label to the axis, so the dashes run unbroken -->
+							<line class="stem" class:solid={m.solid} x1={m.px} x2={m.px} y1={compact ? py : ly + 4} y2={innerH} />
+							<circle cx={m.px} cy={py} r="3.5" style:stroke={keys.length > 1 ? colorOf(m.k) : undefined} />
 							{#if !compact}
+								{@const align = m.eff}
 								<text
-									x={Math.min(Math.max(m.px, 30), innerW - 30)}
+									x={align === 'center'
+										? Math.min(Math.max(m.px, m.tw / 2 - left + 2), innerW + right - m.tw / 2 - 2)
+										: m.px + (align === 'left' ? -5 : 5)}
 									y={ly}
-									text-anchor="middle">{m.text}</text
+									text-anchor={align === 'left' ? 'end' : align === 'right' ? 'start' : 'middle'}
+									style:fill={keys.length > 1 ? colorOf(m.k) : undefined}>{m.text}</text
 								>
 							{/if}
 						</g>
@@ -556,17 +595,13 @@
 		stroke: var(--paper);
 		stroke-width: 4px;
 	}
-	.marker .lead {
-		stroke: var(--ink-faded);
-		stroke-width: 0.8;
-		stroke-dasharray: 1 3;
-	}
 	.marker .stem {
 		stroke: var(--ink);
 		stroke-width: 1.1;
-	}
-	.marker .stem.dashed {
 		stroke-dasharray: 3 3;
+	}
+	.marker .stem.solid {
+		stroke-dasharray: none;
 	}
 	.marker circle {
 		fill: var(--paper);

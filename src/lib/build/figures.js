@@ -10,17 +10,24 @@
 // References work before or after the chart, and every number updates itself when
 // charts are added or moved. An unknown ref stops the build with a clear message.
 // To leave one chart unnumbered, add numbered={false} to it.
+//
+// Field Guide cards (<FieldGuide>) are numbered the same way in their own
+// sequence ("Field Guide 1.1"), and <Fig ref="..." /> links to them too. Tables
+// (<DataTable>) get a third sequence: "Table 1.1".
 // Components that draw a <Figure>. Add new chart components here.
 const FIGURE_TAGS = [
 	'Figure',
+	'AppliedGuide',
 	'BarChart',
 	'Density',
 	'Donut',
+	'DrawStrips',
 	'Dumbbell',
 	'HistogramPanels',
 	'LineChart',
 	'Radar',
 	'RunningAverage',
+	'ScaleMorph',
 	'Scatter'
 ];
 
@@ -49,7 +56,7 @@ function tagEnd(s, start) {
 	throw new Error('unclosed tag');
 }
 
-/** @param {string} filename @param {string} msg */
+/** @param {string} filename @param {string} msg @returns {never} */
 const fail = (filename, msg) => {
 	throw new Error(`Figure numbering in ${filename}: ${msg}`);
 };
@@ -68,9 +75,15 @@ export default function figures() {
 			const parts = content.split(/(<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>)/);
 						const open = new RegExp(`<(${FIGURE_TAGS.join('|')})(?=[\\s/>])`, 'g');
 
-			/** @type {Map<string, string>} */
+			/** @type {Map<string, { label: string, n: string, anchor: string }>} */
 			const ids = new Map();
 			let count = 0;
+			let guides = 0;
+			/** @param {string} key @param {{ label: string, n: string, anchor: string }} v */
+			const register = (key, v) => {
+				if (ids.has(key)) fail(filename, `two figures or field guides have id="${key}"`);
+				ids.set(key, v);
+			};
 
 			// Pass 1: number the figures and wrap each one.
 			for (let p = 0; p < parts.length; p += 2) {
@@ -95,24 +108,60 @@ export default function figures() {
 					const n = `${chapter}.${++count}`;
 					const idMatch = tag.slice(0, openEnd - start).match(/\s+id="([\w-]+)"/);
 					const key = idMatch?.[1];
+					const anchor = `fig-${key ?? n.replace('.', '-')}`;
 					if (key) {
-						if (ids.has(key)) fail(filename, `two figures have id="${key}"`);
-						ids.set(key, n);
+						register(key, { label: 'Figure', n, anchor });
 						tag = tag.replace(idMatch[0], '');
 					}
-					const anchor = `fig-${key ?? n.replace('.', '-')}`;
 					out += text.slice(last, start) + `<NumberedFigure n="${n}" id="${anchor}">\n${tag}\n</NumberedFigure>`;
 					last = end;
 				}
 				parts[p] = out + text.slice(last);
 			}
 
-			// Pass 2: turn <Fig ref="..." /> into "Figure N.M" links.
+			// Pass 1b: number the Field Guide cards; the number goes in as props.
+			for (let p = 0; p < parts.length; p += 2) {
+				parts[p] = parts[p].replace(/<FieldGuide(?=[\s>])([^>]*?)>/g, (whole, attrs) => {
+					const n = `${chapter}.${++guides}`;
+					const idMatch = attrs.match(/\s+id="([\w-]+)"/);
+					const key = idMatch?.[1];
+					const anchor = `guide-${key ?? n.replace('.', '-')}`;
+					if (key) register(key, { label: 'Field Guide', n, anchor });
+					const rest = key ? attrs.replace(idMatch[0], '') : attrs;
+					return `<FieldGuide number="${n}" anchor="${anchor}"${rest}>`;
+				});
+			}
+
+			// Pass 1c: number the tables (<DataTable>) in their own sequence, as props.
+			let tables = 0;
+			for (let p = 0; p < parts.length; p += 2) {
+				let text = parts[p];
+				let out = '';
+				let last = 0;
+				const re = /<DataTable(?=[\s/>])/g;
+				let m;
+				while ((m = re.exec(text))) {
+					const { end } = tagEnd(text, m.index);
+					const tag = text.slice(m.index, end);
+					const n = `${chapter}.${++tables}`;
+					const idMatch = tag.match(/\s+id="([\w-]+)"/);
+					const key = idMatch?.[1];
+					const anchor = `table-${key ?? n.replace('.', '-')}`;
+					if (key) register(key, { label: 'Table', n, anchor });
+					const rest = (key ? tag.replace(idMatch[0], '') : tag).slice('<DataTable'.length);
+					out += text.slice(last, m.index) + `<DataTable number="${n}" anchor="${anchor}"${rest}`;
+					last = end;
+					re.lastIndex = end;
+				}
+				parts[p] = out + text.slice(last);
+			}
+
+			// Pass 2: turn <Fig ref="..." /> into "Figure N.M" / "Field Guide N.M" / "Table N.M" links.
 			for (let p = 0; p < parts.length; p += 2) {
 				parts[p] = parts[p].replace(/<Fig\s+ref="([\w-]+)"\s*\/>/g, (_, key) => {
-					const n = ids.get(key);
-					if (!n) fail(filename, `<Fig ref="${key}" /> doesn't match any chart's id`);
-					return `<a class="figref" href="#fig-${key}">Figure&nbsp;${n}</a>`;
+					const v = ids.get(key);
+					if (!v) fail(filename, `<Fig ref="${key}" /> doesn't match any chart's or field guide's id`);
+					return `<a class="figref" href="#${v.anchor}">${v.label.replace(' ', '&nbsp;')}&nbsp;${v.n}</a>`;
 				});
 			}
 

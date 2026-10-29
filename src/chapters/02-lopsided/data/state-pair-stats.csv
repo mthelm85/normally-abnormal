@@ -1,0 +1,17 @@
+stat,value
+wisconsin_p10,125000.0
+wisconsin_p25,200000.0
+wisconsin_median,300000.0
+wisconsin_p75,420000.0
+wisconsin_p90,600000.0
+wisconsin_mean,349590.10827337
+wisconsin_topcoded_share,0.008307833697116539
+wisconsin_records,19095.0
+massachusetts_p10,300000.0
+massachusetts_p25,415000.0
+massachusetts_median,600000.0
+massachusetts_p75,850000.0
+massachusetts_p90,1200000.0
+massachusetts_mean,739938.2196947924
+massachusetts_topcoded_share,0.007808971695556851
+massachusetts_records,15545.0

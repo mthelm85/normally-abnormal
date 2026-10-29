@@ -15,7 +15,7 @@
 	import Figure from './Figure.svelte';
 	import AxisX from './AxisX.svelte';
 	import Tooltip from './Tooltip.svelte';
-	import { type Fmt, type Row, checkColumns, formatter, smartNumber } from './util';
+	import { type Fmt, type Row, checkColumns, formatter, printing, smartNumber } from './util';
 
 	interface Props {
 		data: Row[];
@@ -102,7 +102,9 @@
 	);
 
 	let w = $state(640);
-	const cols = $derived(columns ?? (w < 520 ? 1 : 2));
+	// Print pages keep the 2 × 2 grid even at the narrow text width.
+	const print = printing();
+	const cols = $derived(columns ?? (w < 520 && !print ? 1 : 2));
 	const gutter = 28;
 	const side = 10;
 	const cellW = $derived((w - (cols - 1) * gutter) / cols);

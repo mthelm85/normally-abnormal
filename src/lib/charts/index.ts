@@ -6,9 +6,12 @@ export { default as Scatter } from './Scatter.svelte';
 export { default as Donut } from './Donut.svelte';
 export { default as Radar } from './Radar.svelte';
 export { default as Table } from './Table.svelte';
+export { default as DataTable } from './DataTable.svelte';
+export { default as DrawStrips } from './DrawStrips.svelte';
 export { default as Density } from './Density.svelte';
 export { default as RunningAverage } from './RunningAverage.svelte';
 export { default as HistogramPanels } from './HistogramPanels.svelte';
+export { default as ScaleMorph } from './ScaleMorph.svelte';
 
 // Building blocks for one-off, article-specific charts.
 export { default as Figure } from './Figure.svelte';

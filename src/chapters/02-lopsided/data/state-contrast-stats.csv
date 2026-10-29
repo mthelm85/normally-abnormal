@@ -1,0 +1,17 @@
+stat,value
+minnesota_p10,150000.0
+minnesota_p25,250000.0
+minnesota_median,350000.0
+minnesota_p75,475000.0
+minnesota_p90,668000.0
+minnesota_mean,404113.79969650984
+minnesota_topcoded_share,0.007350669057801076
+minnesota_records,17925.0
+tennessee_p10,112000.0
+tennessee_p25,200000.0
+tennessee_median,340000.0
+tennessee_p75,500000.0
+tennessee_p90,777000.0
+tennessee_mean,432153.0303137855
+tennessee_topcoded_share,0.008357793291760276
+tennessee_records,19837.0

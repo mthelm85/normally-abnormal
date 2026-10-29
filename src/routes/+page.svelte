@@ -101,9 +101,20 @@
 			{#each chapters as ch (ch.folder)}
 				<li>
 					<a href="/{ch.slug}">
-						<span class="num typewriter">Chapter {chapterWord(ch.number)}</span>
-						<span class="t">{ch.title}</span>
-						{#if ch.summary}<span class="summary">{ch.summary}</span>{/if}
+						{#if ch.summary}
+							<span class="t">{ch.title}</span>
+							<span class="line">
+								<span class="summary">{ch.summary}</span>
+								<span class="leader" aria-hidden="true"></span>
+								<span class="num">Chapter {chapterWord(ch.number)}</span>
+							</span>
+						{:else}
+							<span class="line">
+								<span class="t">{ch.title}</span>
+								<span class="leader" aria-hidden="true"></span>
+								<span class="num">Chapter {chapterWord(ch.number)}</span>
+							</span>
+						{/if}
 					</a>
 				</li>
 			{/each}
@@ -336,40 +347,56 @@
 		font-size: 1.3rem;
 		margin-bottom: 1.2rem;
 	}
+	/* A printed table of contents: the title, then the summary with a dotted leader
+	   running to the chapter number, where a page number would sit. */
 	ol {
 		list-style: none;
-		padding: 0;
+		padding: 0.4rem 0 0;
 		margin: 0;
-	}
-	li {
 		border-top: 1px solid var(--rule);
 	}
-	li:last-child {
-		border-bottom: 1px solid var(--rule);
-	}
 	li a {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-		padding: 0.9rem 0;
+		display: block;
+		padding: 0.75rem 0;
 		text-decoration: none;
 	}
-	.num {
-		font-size: 0.85rem;
-		color: var(--ink-faded);
+	.line {
+		display: flex;
+		align-items: last baseline;
+		gap: 0.5rem;
 	}
 	.t {
+		display: block;
 		font-family: var(--font-head);
 		font-weight: 700;
-		font-size: 1.35rem;
-		line-height: 1.15;
+		font-size: 1.3rem;
+		line-height: 1.2;
+		text-wrap: balance;
+		transition: color 0.2s;
+	}
+	.leader {
+		flex: 1;
+		min-width: 1.5rem;
+		/* sits on the text baseline, level with the periods */
+		border-bottom: 2px dotted var(--ink-faded);
+		margin-bottom: 0.32em;
+	}
+	.num {
+		flex: none;
+		font-variant-caps: all-small-caps;
+		letter-spacing: 0.06em;
+		font-size: 1.15rem;
+		color: var(--ink-soft);
 	}
 	.summary {
+		margin-top: 0.15rem;
 		font-style: italic;
 		color: var(--ink-soft);
-		font-size: 1.05rem;
+		font-size: 1.02rem;
+		line-height: 1.35;
 	}
-	li a:hover .t {
+	li a:hover .t,
+	li a:focus-visible .t {
 		color: var(--accent);
 	}
 </style>

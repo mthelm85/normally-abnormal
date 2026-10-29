@@ -1,0 +1,365 @@
+---
+number: 2
+title: "A Lopsided Victory"
+summary: "How skew pulls the mean away from the typical case."
+---
+
+<script>
+	import { Density, ScaleMorph, DataTable, HistogramPanels, DrawStrips } from '#charts';
+	import { Note } from '#lib/notes/index.js';
+	import { FieldGuide, Check, Section, AppliedGuide, Verdict, Step } from '#lib/fieldguide';
+	import salaries from './data/salaries.csv';
+	import salaryStats from './data/salaries-stats.csv';
+	import salariesGeo from './data/salaries-geo-table.csv';
+	const w = Object.fromEntries(salaryStats.map((r) => [r.stat, r.value]));
+	import homes from './data/home-values.csv';
+	import homesMorph from './data/home-values-morph.csv';
+	import spread from './data/spread.csv';
+	import spreadDraws from './data/spread-draws.csv';
+	import raises from './data/raises.csv';
+	import raisesNormal from './data/raises-normal.csv';
+	import raisesStats from './data/raises-stats.csv';
+	const rs = Object.fromEntries(raisesStats.map((r) => [r.stat, r.value]));
+	import homeStats from './data/home-values-stats.csv';
+	import statePair from './data/state-pair.csv';
+	import statePairStats from './data/state-pair-stats.csv';
+	import statePairTable from './data/state-pair-table.csv';
+	import stateContrast from './data/state-contrast.csv';
+	import stateContrastStats from './data/state-contrast-stats.csv';
+	import stateContrastTable from './data/state-contrast-table.csv';
+	import stateContrastSd from './data/state-contrast-sd-table.csv';
+	import stateContrastGeo from './data/state-contrast-geo-table.csv';
+	const sc = Object.fromEntries(stateContrastStats.map((r) => [r.stat, r.value]));
+	const sp = Object.fromEntries(statePairStats.map((r) => [r.stat, r.value]));
+	const hv = Object.fromEntries(homeStats.map((r) => [r.stat, r.value]));
+</script>
+
+<!--
+	Chapter template (from the book plan):
+	1. The question: someone asks for an average; a short, concrete example.
+	2. The surprise: the average gives a wrong or useless answer, shown with one figure.
+	3. Why it happens: the mechanism behind the shape (multiplicative growth → lognormal).
+	4. Watch it happen: a simulation shown as a figure.
+	5. What to say instead: the better summary, plus a verdict on whether Normal would do.
+	End with a Field Guide card: Signs you're here / Quick test / What to report instead.
+-->
+
+## Show Me the Money
+
+I once volunteered for a career day event at my daughter's middle school. Like the other volunteers, my role was to occupy a seat at a table in the cafeteria, on top of which sat a sign displaying the name of my occupation, *Data Scientist*. Kids could stop by and talk to me about my profession and ask questions about what kinds of tasks it involves, what a typical day is like, and more. One young man, who seemed genuinely intrigued by my explanation of the work of a data scientist, seemed conflicted after our brief chat. 
+
+"I've always wanted to be a CEO, but your job *does* sound really cool," he remarked. 
+
+"What is it about being a CEO that appeals to you?" I asked.
+
+"They get to be in charge, and they make a *lot* of money!" he responded frankly. He didn't know exactly how much he could expect to earn as a CEO, but he was sure that it was significantly more than most people who worked ordinary jobs. 
+
+For many people, expected earnings are a very important factor in deciding between careers. Wages, however, are not normally distributed, which creates challenges when comparing earnings statistics for two occupations. The Bureau of Labor Statistics regularly publishes wage data for standard occupational classifications, and if we use our checklist from Chapter 1, we can evaluate the process that generates these data and determine how likely they are to follow a bell curve.
+
+First, an individual's pay at a given point in time is shaped by dozens of factors, including their level of education, experience, geographic location, the industry in which they work, any licenses or specialized credentials they may hold, unique skills they may possess, and more. As a result, the process that generates wage data passes our *many pieces* test. 
+
+The second test, for additivity, fails quite clearly. Pay raises are frequently calculated as a percentage, and a 4% raise is worth far more in dollars to someone earning a high salary than to someone earning a lower one. Premiums for rare credentials or a particular geography, like a big city, also behave approximately like multipliers, and this again violates our second item on the checklist. 
+
+The independence test holds only partially. Workers with high levels of education are more likely to hold specialized credentials and licenses, high-paying industries are more likely to cluster in big cities, and rare skills are more likely to come with more experience. In essence, many of the pieces we outlined in the first test tend to move together, violating the requirement for independence. When this occurs, an individual's advantages tend to accumulate rather than averaging out, which increases the spread across salary levels. 
+
+The *no giants* test mostly passes, although occupations in which bonuses and commissions make up a large portion of a particular year's pay, for example, may violate this. 
+
+Finally, the *one-group* test partially fails since certain occupational categories are much more heterogeneous than others. For example, *General and operations managers* is a broad occupational category that encompasses a fairly wide range of management jobs, while *Data scientists* tends to be a relatively narrower classification.
+
+Here's what our completed checklist might look like for salary data by occupation:
+
+<AppliedGuide id="wage-checklist" title="Field Guide 1.1, Applied to Wages">
+<Section title="How each value is built">
+<Verdict label="Many pieces" result="pass">Education, experience, location, industry, credentials, and skills all shape pay.</Verdict>
+<Verdict label="Additive" result="fail">Raises and pay premiums are percentages, so they multiply rather than add.</Verdict>
+<Verdict label="Independent" result="partly">Education, credentials, location, and experience tend to travel together.</Verdict>
+<Verdict label="No giants" result="partly">Mostly small pieces, but bonuses and commissions can dominate a year’s pay.</Verdict>
+</Section>
+<Section title="Whether the values belong together">
+<Verdict label="One group" result="partly">Broad job titles, like general and operations managers, mix very different jobs.</Verdict>
+</Section>
+<p><em>Verdict:</em> don’t expect a bell. Rather, expect a curve that is stretched outward to the right, as in <Fig ref="salaries" />.</p>
+</AppliedGuide>
+
+The test that fails most clearly is the one for additivity, and when this particular test fails, it tends to stretch the distribution to one side. Understanding why is fairly straightforward if we conduct a simple thought experiment: imagine two individuals, each earning $100,000 per year. If the first individual doubles their salary twice, they end up at $400,000. If the second individual halves their salary twice, they end up at $25,000. The process is bounded at zero for the poor worker whose salary keeps halving, but the sky's the limit for the lucky one who keeps experiencing a doubling of their salary. This stretches the distribution to one side and produces a long tail.
+
+We can also simulate this kind of process. Imagine 10,000 workers each have a starting salary of $50,000, and every year each individual's salary is randomly adjusted. On average, a worker's salary is increased by 2.5%, but the amount varies by approximately 9 percentage points from worker to worker, meaning some workers get pay *cuts*. As time progresses, the distribution becomes increasingly asymmetrical and begins to look less and less like a bell curve, as we see in <Fig ref="raises" />. After 40 years, we have a mean salary of $133,000, and a median of $114,000, while 61% of our workers are below the mean.
+
+<HistogramPanels
+	id="raises"
+	data={raises}
+	panel="year"
+	x="salary"
+	y="share"
+	curve={raisesNormal}
+	curveLabel="Normal curve, same mean and spread"
+	panelTitle={(n) => `After ${n} ${n === 1 ? 'year' : 'years'}`}
+	xDomain={[0, 400000]}
+	xTicks={[0, 100000, 200000, 300000, 400000]}
+	xFormat="$.2~s"
+	yFormat=".1%"
+	reference={50000}
+	referenceLabel="start"
+	labelBars={0}
+	yName="Share of workers"
+	xLabel="Salary"
+	title="Random Raises Pile Up Into a Lopsided Curve"
+	source="Simulated"
+	note="10,000 workers who all start at $50,000 and each year get a random raise or cut (+2.5% on average, varying by 9 percentage points from person to person); each panel has its own vertical scale"
+/>
+
+This lopsided shape is essentially the result of compounding over time, and it's what we see in real-world wage and salary data. <Fig ref="salaries" /> shows two wage distributions: one for the *General and operations managers* occupational category, and another for *Data scientists.* While this particular class of managers is below the level that the young man from the career day event aspired to, it's plausible that he may consider this occupational category some day. If he just looked at the mean salaries, he might conclude that workers in the manager classification earn more money than data scientists. However, the median values tell a different story. Half of all data scientists are estimated to earn at least $120,000, while the corresponding figure for general and operations managers is $106,000. 
+
+<Density
+	id="salaries"
+	area={false}
+	data={salaries}
+	x="x"
+	y={['managers', 'data_scientists']}
+	labels={{ managers: 'General and operations managers', data_scientists: 'Data scientists' }}
+	xLabel="Annual wage"
+	xFormat="$.3~s"
+	markers={[
+		{ x: w.managers_median, series: 'managers', label: 'Median', align: 'left', row: 0 },
+		{ x: w.managers_mean, series: 'managers', label: 'Mean', align: 'right', row: 0 },
+		{ x: w.data_scientists_median, series: 'data_scientists', label: 'Median', align: 'left', row: 1 },
+		{ x: w.data_scientists_mean, series: 'data_scientists', label: 'Mean', align: 'right', row: 1 }
+	]}
+	title="Managers Earn More on Average; Data Scientists Earn More Typically"
+	source="Bureau of Labor Statistics, Occupational Employment and Wage Statistics"
+	period="May 2025"
+	note="Curves are lognormal shapes fitted to each occupation's published 25th and 75th percentile wages; each falls within about 5% of the published 10th, 50th, and 90th percentiles and within about 2% of the published mean. Markers show the published mean and median, colored by occupation"
+/>
+
+So which figure should we trust if our goal is to understand how much we can expect to earn in one occupation versus the other? Notice that the two lines in the plot cross at two points --- once around the $73,000 mark, and again near $214,000. We can think of our pay scale as being partitioned into three sections with the boundaries at those very points. Looking at it this way, we see that data scientist salaries are more concentrated in the middle section, while manager salaries are more concentrated at the ends. That is to say, managers are more likely to earn low salaries while also being more likely to earn very high salaries.
+
+## Playing the Game
+
+ Comparing these kinds of distributions leaves the prospective worker in a situation that may feel somewhat like a game of chance. Imagine, for example, two booths at the county fair: at Booth A, everyone is guaranteed to win $100, and at Booth B, there's a 90% chance you win $95 and a 10% chance that you win $250. The average, or expected value, of Booth B's winnings is $110.50 (\( 0.9 \times 95 + 0.1 \times 250 \)) and the median payout is simply $95. At Booth A, both the expected and median values are $100. This means that Booth B will pay out more than Booth A *on average*, but nine out of every ten players at Booth B will end up worse off than they would have been had they instead chosen to play at Booth A. However, the law of large numbers tells us that the average winnings of those who play at Booth B *over and over again* will eventually approach $110.50. Nonetheless, that provides little comfort to someone choosing between careers because, as we all know, we only get to play the game of life once. In the case of our two wage distributions, the data scientist wage distribution is analogous to Booth A and the distribution for general and operations managers is analogous to Booth B. 
+
+ This exercise shows us that for certain distributions, comparisons may require a more nuanced approach. The larger mean combined with the lower median for the managers distribution provided a clue that it had a longer and fatter tail than that of the data scientists distribution, and comparing the medians suggested that the typical data scientist earns more than this particular class of manager. Looking at the whole distributions made the picture very clear as it allowed us to see that managers' salaries are spread out more than data scientists' salaries. 
+
+So how *should* the young man from the career day event compare these two wage distributions? Before we answer this, we should be clear that salaries aren't a matter of chance --- for a student deciding on a career, their salary won't be a random draw from the applicable salary distribution. Instead, it will be determined by the multitude of factors that we covered as we worked through the checklist. Even though a manager is more than twice as likely as a data scientist to earn less than $60,000, that's likely a result of the heterogeneity across the occupations within this particular occupational category (which plays a part in the distribution not being normal). If our aspiring CEO obtains the right credentials and experience, and finds employment in a large city, for example, it would be reasonable for him to expect a salary in the upper portion of the relevant distribution.
+
+ ## Log Houses
+
+To better compare our wage distributions, we'll need a better tool, and working through another example of data that tend to be loosely shaped like wages and salaries will help us understand how this new tool works. House values usually follow a right-skewed distribution, and working through our checklist again allows us to understand why this is the case:
+
+<AppliedGuide id="housing-checklist" title="Field Guide 1.1, Applied to Home Values">
+<Section title="How each value is built">
+<Verdict label="Many pieces" result="pass">Location, size, lot, age, condition, schools, and views all shape a home’s value.</Verdict>
+<Verdict label="Additive" result="fail">Location and appreciation work as multipliers: the same house costs several times more in one city than another, and prices grow by percentages.</Verdict>
+<Verdict label="Independent" result="partly">Big houses tend to be built on big lots, and condition is generally related to age.</Verdict>
+<Verdict label="No giants" result="partly">In expensive cities, the land under a house can be worth more than the house itself.</Verdict>
+</Section>
+<Section title="Whether the values belong together">
+<Verdict label="One group" result="fail">Nationwide data mix housing markets as different as rural Mississippi and San Jose.</Verdict>
+</Section>
+<p><em>Verdict:</em> don’t expect a bell. Expect a curve with a long right tail, as in <Fig ref="home-values" />.</p>
+</AppliedGuide>
+
+The U.S. Census Bureau's American Community Survey (ACS) is conducted annually and covers approximately 3.5 million addresses across the United States and Puerto Rico. Among the many questions respondents are asked are questions about where they live and what the value of their home is. Using the data for 2024, the mean home value for single-family, detached houses was $501,000, the median was $350,000, and the mode was $268,000. This pattern, mode \< median \< mean, tells us that we are dealing with a right-skewed distribution. <Fig ref="home-values" /> shows an estimate of the probability density for home values, as reported by ACS respondents:
+
+<Density
+	id="home-values"
+	data={homes}
+	x="x"
+	y="density"
+	below="share_below"
+	xDomain={[0, 2000000]}
+	xLabel="Home value"
+	xFormat="$.3~s"
+	markers={[
+		{ x: hv.mode, label: 'Mode', row: 0, align: 'left' },
+		{ x: hv.median, label: 'Median', row: 1 },
+		{ x: hv.mean, label: 'Mean', row: 0, align: 'right' }
+	]}
+	title="Home Values: A Long Tail to the Right"
+	source="U.S. Census Bureau, American Community Survey 1-year microdata"
+	period="2024"
+	note="Owner-occupied single-family detached homes, valued by their owners. About 2% of homes are worth more than $2 million and extend off the right edge"
+/>
+
+We know that the multiplicative effects of location and appreciation, at least in part, are responsible for the long tail we see in the plot. Just as we saw with the net worth distribution in Chapter 1, the horizontal axis in this plot is truncated because we are using a linear scale and cutting it short is necessary to produce a readable chart. However, if we simply change the scale of our x-axis, something very interesting happens, as you can see in <Fig ref="home-values-log" />:
+
+<ScaleMorph
+	id="home-values-log"
+	data={homesMorph}
+	x="x"
+	y="density"
+	reference="lognormal"
+	labels={{ density: 'Home values', lognormal: 'Lognormal curve' }}
+	below="share_below"
+	median={hv.median}
+	mean={hv.mean}
+	mode={false}
+	linearDomain={[0, 2000000]}
+	logDomain={[25000, 3200000]}
+	logTicks={[25000, 100000, 400000, 1600000]}
+	xLabel="Home value"
+	xFormat="$.3~s"
+	title="On a Log Scale, the Bell Takes Shape (Mostly)"
+	source="U.S. Census Bureau, American Community Survey 1-year microdata"
+	period="2024"
+	note="Each step along the axis multiplies the value rather than adding to it. The dashed lognormal curve is fitted to the 25th and 75th percentiles. About 2% of homes are worth less than $25,000 and 1% more than $3.2 million"
+/>
+
+By simply shifting from a linear scale to a logarithmic one, our home values data bunch up into a rough bell shape. This happens because logarithms effectively turn multiplication into simple addition, so the Central Limit Theorem works again and the bell shape emerges. Notice in <Fig ref="home-values" /> that each increment on the x-axis is an increase in value of $200,000, but in <Fig ref="home-values-log" />, each increment represents a 4x increase in value --- this is the log transform in action. When a distribution forms a bell curve on a log scale, it is simply known as a *lognormal* distribution, and many processes follow one. Everything from asset prices, incomes, and firm sizes, to rainfall, network response times, and viral loads have been approximated by a lognormal distribution. 
+
+So how does this help us in practice? Let's consider more home value data. This time, we'll look at the distributions for two different states, and we'll see how the log transformation, along with a few tweaks in how we think about and describe the data, helps us perform a better analysis.
+
+## A Tale of Two Distributions
+
+<Fig ref="state-pair" /> shows estimates of the probability densities for home values in Wisconsin and Massachusetts, again on a log scale. 
+
+<Density
+	id="state-pair"
+	data={statePair}
+	x="x"
+	y={['wisconsin', 'massachusetts']}
+	labels={{ wisconsin: 'Wisconsin', massachusetts: 'Massachusetts' }}
+	below={{ wisconsin: 'wisconsin_below', massachusetts: 'massachusetts_below' }}
+	area={false}
+	xType="log"
+	xTicks={[25000, 100000, 400000, 1600000]}
+	xDomain={[25000, 3200000]}
+	xLabel="Home value (log scale)"
+	xFormat="$.3~s"
+	markers={[
+		{ x: sp.wisconsin_median, series: 'wisconsin', label: 'Median' },
+		{ x: sp.massachusetts_median, series: 'massachusetts', label: 'Median' }
+	]}
+	spans={[{ from: sp.wisconsin_median, to: sp.massachusetts_median, label: '2×' }]}
+	title="Same Shape, Twice the Price"
+	source="U.S. Census Bureau, American Community Survey 1-year microdata"
+	period="2024"
+	note="Owner-occupied single-family detached homes, valued by their owners. The Census Bureau reports the highest values in each state (just under 1% of homes) only as above a cap, so the curves leave them out"
+/>
+
+We can see from this plot that the shapes of the distributions on the log scale are quite similar, just shifted. Remembering that our log axis is effectively a multiplicative scale, this allows us to compare the two markets with a single value, just stated as a multiple. In fact, we can say that *home values in Massachusetts are roughly two times home values in Wisconsin*, across their respective distributions. <Fig ref="state-pair-table" /> demonstrates this:
+
+<DataTable
+	id="state-pair-table"
+	data={statePairTable}
+	title="Home Values in Wisconsin and Massachusetts"
+	source="U.S. Census Bureau, American Community Survey 1-year microdata"
+	period="2024"
+	note="Percentiles and means of owner-reported values for owner-occupied single-family detached homes. The ratio is Massachusetts ÷ Wisconsin"
+	summary
+/>
+
+This works in this case because the *widths* of the distributions are roughly the same. If we compare the ratio of the 75th percentiles to the 25th percentiles, it's approximately two for both states. As long as that's the case, we can compare the markets to one another with a simple multiple. When the widths differ, we have to take a little more care in doing our comparisons.
+
+Take for example home values in Minnesota and Tennessee, as in <Fig ref="state-contrast" />. The Tennessee values are more spread out than those of Minnesota, so Tennessee has a wider, shorter distribution on the log scale. Just as we saw with the manager and data scientist wage distributions, the means and medians tell a different story. Tennessee has a higher mean, but a lower median than Minnesota. 
+
+<Density
+	id="state-contrast"
+	data={stateContrast}
+	x="x"
+	y={['minnesota', 'tennessee']}
+	labels={{ minnesota: 'Minnesota', tennessee: 'Tennessee' }}
+	below={{ minnesota: 'minnesota_below', tennessee: 'tennessee_below' }}
+	area={false}
+	xType="log"
+	xTicks={[25000, 100000, 400000, 1600000]}
+	xDomain={[25000, 3200000]}
+	xLabel="Home value (log scale)"
+	xFormat="$.3~s"
+	markers={[
+		{ x: sc.minnesota_median, series: 'minnesota', label: 'Median', align: 'left', row: 1 },
+		{ x: sc.tennessee_median, series: 'tennessee', label: 'Median', align: 'left', row: 0 },
+		{ x: sc.minnesota_mean, series: 'minnesota', label: 'Mean', align: 'right', row: 1 },
+		{ x: sc.tennessee_mean, series: 'tennessee', label: 'Mean', align: 'right', row: 0 }
+	]}
+	title="Same Median, Different Spread"
+	source="U.S. Census Bureau, American Community Survey 1-year microdata"
+	period="2024"
+	note="Owner-occupied single-family detached homes, valued by their owners. The Census Bureau reports the highest values in each state (just under 1% of homes) only as above a cap, so the curves leave them out"
+/>
+
+In Chapter 1, we briefly mentioned the concept of standard deviation. The standard deviation is just the typical deviation from the mean (calculated as the square root of the average squared deviations from the mean), and it tells us how spread out, or wide, a distribution is. In other words, it indicates how far away you can expect values to lie from the mean. For example, if we sample three values, $10, $20, and $30, the standard deviation is $10. This is easy to see since the mean for these three values is $20, and each value (aside from the $20 value itself) lies $10 away from the mean.
+
+Another way to think about the width of a distribution is in terms of *uncertainty*. The wider a distribution is, the more uncertain are the values that it produces. Looking at an extreme example makes this clear. In <Fig ref="spread" />, we see two normal distributions with the same mean, but drastically different standard deviations. If we draw random samples from these distributions, it's clear that the distribution with the small standard deviation produces more consistent values, while the values produced by the wide distribution can vary wildly from one draw to the next. This is an important characteristic of distributions, and more generally, it's an important feature of data that one should understand. Although our distributions in this example had the exact same mean, the processes that generate the data are very different.
+
+<DrawStrips
+	id="spread"
+	curves={spread}
+	x="x"
+	series={[
+		{ key: 'narrow', label: 'Standard deviation of 5' },
+		{ key: 'wide', label: 'Standard deviation of 20' }
+	]}
+	draws={spreadDraws}
+	drawSeries="series"
+	drawValue="value"
+	reference={50}
+	referenceLabel="mean"
+	xDomain={[0, 100]}
+	xTicks={[0, 25, 50, 75, 100]}
+	xLabel="Value"
+	title="Same Center, Very Different Certainty"
+	source="Simulated"
+	note="Two normal distributions with a mean of 50, drawn on the same vertical scale; the dots are 40 random draws from each"
+/>
+
+If we calculate the ordinary standard deviations for Minnesota and Tennessee home values, we get $356,000 and $475,000, respectively. This tells us that there is more uncertainty in the Tennessee distribution, as it is more spread out. The skewed nature of these distributions also creates a nasty problem when we want to use our standard deviations. Suppose we want to know the range of values that lie within one standard deviation of the mean. The table below shows the necessary calculations:
+
+<DataTable
+	id="state-contrast-sd"
+	data={stateContrastSd}
+	title="Mean Plus or Minus One Standard Deviation"
+	source="U.S. Census Bureau, American Community Survey 1-year microdata"
+	period="2024"
+	note="Owner-reported values for owner-occupied single-family detached homes"
+/>
+
+Given our simple interpretation of the standard deviation, these figures suggest that it's normal for some homes in Minnesota to be valued around $49,000, while some Tennessee homes would have nonsensical negative values! Lucky for us, statisticians have given us a clever solution to this problem.
+
+## Geometry Class
+
+*Geometric* means and standard deviations are incredibly useful whenever we are dealing with multiplicative processes. The geometric mean is nothing more than the anti-logarithm of the average of the log values (i.e., you take the average of the log values, then undo the log). Consider the simple case involving two values: $100 and $400. The ordinary mean is $250, but the geometric mean is $200. Notice that $200 is exactly double the smaller value and half the larger value. This is a very nice feature of geometric means as it tells us what the center is on a log scale, which accounts for the fact that the process is multiplicative and values compound.
+
+Applying this to our data for Minnesota and Tennessee, we get geometric means of $319,000 and $305,000, respectively. Notice that this reverses the order of the ordinary means and Minnesota's geometric mean is higher than Tennessee's, which is consistent with the ordering of the median values that we saw in <Fig ref="state-contrast" />. 
+
+We can also calculate the geometric standard deviation, which will produce a much more sensible range of values, as in <Fig ref="state-contrast-geo" />:
+
+<DataTable
+	id="state-contrast-geo"
+	data={stateContrastGeo}
+	title="Geometric Mean Times or Divided by One Geometric Standard Deviation"
+	source="U.S. Census Bureau, American Community Survey 1-year microdata"
+	period="2024"
+	note="Owner-reported values for owner-occupied single-family detached homes. The geometric standard deviation is a multiplier: the range runs from the geometric mean divided by it to the geometric mean multiplied by it. About 80% of homes in each state fall within that range"
+/>
+
+Since our data-generating process is multiplicative, our geometric standard deviations are calculated as multiples, and we no longer add and subtract them from the geometric mean --- instead, we divide and multiply by them. The geometric standard deviation is calculated similarly to the geometric mean --- it's the antilog of the standard deviation of the log values, and it comes out as a multiplier. This produces a much more sensible range and, in fact, about 80% of homes in each state fall within the calculated ranges in the table above.
+
+## The Verdict Is In
+
+We can now return to our salary distributions, armed with the necessary tools to do a comparison that works the way we would expect it to. Field Guide 2.1 provides a simple roadmap for comparing two right-skewed distributions:
+
+<FieldGuide id="compare-lopsided" title="Comparing Two Lopsided Distributions">
+<Step label="Check the shape">Is the mean well above the median, or can the values climb without limit but never fall below zero? If neither, this guide doesn’t apply.</Step>
+<Step label="Compare the centers">Divide one median by the other and state the result as a multiple: “B is 1.5 times A,” not “B is $150,000 more.”</Step>
+<Step label="Compare the spreads">For each group, divide the 75th percentile by the 25th. The larger ratio marks the wider, less predictable distribution.</Step>
+<Step label="Summarize">If the spreads are similar, the ratio of the medians describes the whole comparison. If they differ, report each group’s median and spread, and don’t rank the groups by their means.</Step>
+<p><em>The exception:</em> when you need a total, such as a payroll, a budget, or a tax base, use the mean. It’s the only average that multiplies back up to the total.</p>
+</FieldGuide>
+
+
+<Fig ref="salaries-geo" /> shows how one would apply this field guide to the salary data:
+
+<DataTable
+	id="salaries-geo"
+	data={salariesGeo}
+	title="Medians and Quartiles of the Two Wage Distributions"
+	source="Bureau of Labor Statistics, Occupational Employment and Wage Statistics"
+	period="May 2025"
+	note="Published percentiles of annual wages. The quartile ratio (75th ÷ 25th percentile) measures spread as a multiple: the middle half of each occupation's wages spans that factor"
+/>
+
+So why didn't we ultimately use the geometric mean and standard deviation? The truth is they would work fine in this case, but it's not necessary for lognormal data. In fact, for a *true* lognormal distribution, the geometric mean is exactly the same as the median. By simply comparing the medians and the ratios of the 75th to 25th percentiles, we can confidently conclude that data scientists typically earn more than general and operations managers, and that manager salaries at the 75th percentile are roughly 2.3 times those at the 25th percentile, while the corresponding figure for data scientist salaries is 1.9 times. This conveys the same information that the geometric calculations offer, but it's simpler.
+
+Finally, I have a bit of a confession to make. You may be wondering why I chose the occupational category for *general and operations managers* when the young man from the career day event specifically said he aspired to be a CEO. The data source indeed includes the CEO occupational classification, and we could have compared that distribution to the data scientist wage distribution. The reason I chose a different category is that the CEO salary distribution is far more extreme than most wage distributions, and even our mighty log transformation can't tame its tail. In the next chapter, we'll see how to deal with these kinds of distributions.
+
+

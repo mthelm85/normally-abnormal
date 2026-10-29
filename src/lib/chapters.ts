@@ -11,9 +11,9 @@ export const BOOK = {
 };
 
 export interface Chapter {
-	/** folder name, e.g. "01-comfortable-myth" */
+	/** folder name, e.g. "01-average-millionaire" */
 	folder: string;
-	/** URL slug, e.g. "comfortable-myth" */
+	/** URL slug, e.g. "average-millionaire" */
 	slug: string;
 	number: number;
 	title: string;
