@@ -1,66 +1,60 @@
 /* Subsetted (Latin) woff2 builds of the original Data Dispatch faces.
-   Birmingham Titling is reserved for the masthead nameplate. */
+*/
 @font-face {
-	font-family: 'Birmingham Titling';
-	src: url('/fonts/birmingham-titling.woff2') format('woff2');
+	font-family: 'Typewriter Condensed';
+	src: url('../assets/fonts/typewriter.woff2') format('woff2');
 	font-weight: 400;
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Typewriter Condensed';
-	src: url('/fonts/typewriter.woff2') format('woff2');
-	font-weight: 400;
-	font-display: swap;
-}
-@font-face {
-	font-family: 'Typewriter Condensed';
-	src: url('/fonts/typewriter-demi.woff2') format('woff2');
+	src: url('../assets/fonts/typewriter-demi.woff2') format('woff2');
 	font-weight: 600;
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Typewriter Condensed';
-	src: url('/fonts/typewriter-bold.woff2') format('woff2');
+	src: url('../assets/fonts/typewriter-bold.woff2') format('woff2');
 	font-weight: 700;
 	font-display: swap;
 }
 @font-face {
 	font-family: 'EB Garamond';
-	src: url('/fonts/garamond.woff2') format('woff2');
+	src: url('../assets/fonts/garamond.woff2') format('woff2');
 	font-weight: 400 800;
 	font-style: normal;
 	font-display: swap;
 }
 @font-face {
 	font-family: 'EB Garamond';
-	src: url('/fonts/garamond-italic.woff2') format('woff2');
+	src: url('../assets/fonts/garamond-italic.woff2') format('woff2');
 	font-weight: 400 800;
 	font-style: italic;
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Playfair Display';
-	src: url('/fonts/playfair.woff2') format('woff2');
+	src: url('../assets/fonts/playfair.woff2') format('woff2');
 	font-weight: 400 900;
 	font-style: normal;
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Playfair Display';
-	src: url('/fonts/playfair-italic.woff2') format('woff2');
+	src: url('../assets/fonts/playfair-italic.woff2') format('woff2');
 	font-weight: 400 900;
 	font-style: italic;
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Lato';
-	src: url('/fonts/lato.woff2') format('woff2');
+	src: url('../assets/fonts/lato.woff2') format('woff2');
 	font-weight: 400;
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Lato';
-	src: url('/fonts/lato-bold.woff2') format('woff2');
+	src: url('../assets/fonts/lato-bold.woff2') format('woff2');
 	font-weight: 700;
 	font-display: swap;
 }

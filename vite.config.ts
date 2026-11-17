@@ -2,7 +2,8 @@ import { mdsvex } from 'mdsvex';
 import dropcap from './src/lib/build/dropcap.js';
 import math from './src/lib/build/math.js';
 import figures from './src/lib/build/figures.js';
-import adapter from '@sveltejs/adapter-vercel';
+import drafts from './src/lib/build/drafts.js';
+import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -29,8 +30,13 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter(),
+			// Static files for GitHub Pages. BASE_PATH is the repository path the site is
+			// served under (e.g. /normally-abnormal); the deploy workflow sets it. Leave it
+			// unset for a custom domain or local builds.
+			adapter: adapter({ fallback: '404.html' }),
+			paths: { base: (process.env.BASE_PATH ?? '') as '' | `/${string}` },
 			preprocess: [
+				drafts(),
 				figures(),
 				math(),
 				mdsvex({

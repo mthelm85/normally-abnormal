@@ -1,19 +1,21 @@
-// Svelte preprocessor: numbers a chapter's figures at build time.
+// Svelte preprocessor: numbers an essay's figures at build time.
 //
-// Every chart in a chapter is numbered in order, chapter-dot-figure (1.1, 1.2, ...),
-// and its caption shows "Figure 1.2". To refer to a chart in the text, give it an id
-// and use <Fig>:
+// The site is a series of essays, so numbering restarts in each one: its charts are
+// Figure 1, 2, 3 ..., and its tables Table 1, 2, .... To refer to a chart in the
+// text, give it an id and use <Fig>:
 //
 //   <RunningAverage id="kicks" ... />
-//   ... as <Fig ref="kicks" /> shows ...     →   ... as Figure 1.2 shows ...
+//   ... as <Fig ref="kicks" /> shows ...     →   ... as Figure 2 shows ...
 //
 // References work before or after the chart, and every number updates itself when
 // charts are added or moved. An unknown ref stops the build with a clear message.
 // To leave one chart unnumbered, add numbered={false} to it.
 //
-// Field Guide cards (<FieldGuide>) are numbered the same way in their own
-// sequence ("Field Guide 1.1"), and <Fig ref="..." /> links to them too. Tables
-// (<DataTable>) get a third sequence: "Table 1.1".
+// Field Guide cards (<FieldGuide>) carry the essay's part number instead
+// ("Field Guide 2" in Part Two), since each essay has at most one and readers refer
+// to them across the series; an essay with several gets 2.1, 2.2, ....
+// <Fig ref="..." /> links to them too. (The print edition, scripts/print.mjs, still
+// numbers book-style.)
 // Components that draw a <Figure>. Add new chart components here.
 const FIGURE_TAGS = [
 	'Figure',
@@ -25,6 +27,7 @@ const FIGURE_TAGS = [
 	'Dumbbell',
 	'HistogramPanels',
 	'LineChart',
+	'LogChart',
 	'Radar',
 	'RunningAverage',
 	'ScaleMorph',
@@ -105,7 +108,7 @@ export default function figures() {
 					open.lastIndex = end;
 					if (/\snumbered=\{false\}/.test(tag.slice(0, openEnd - start))) continue;
 
-					const n = `${chapter}.${++count}`;
+					const n = `${++count}`;
 					const idMatch = tag.slice(0, openEnd - start).match(/\s+id="([\w-]+)"/);
 					const key = idMatch?.[1];
 					const anchor = `fig-${key ?? n.replace('.', '-')}`;
@@ -120,9 +123,13 @@ export default function figures() {
 			}
 
 			// Pass 1b: number the Field Guide cards; the number goes in as props.
+			const guideTotal = parts
+				.filter((_, p) => p % 2 === 0)
+				.reduce((k, t) => k + (t.match(/<FieldGuide(?=[\s>])/g)?.length ?? 0), 0);
 			for (let p = 0; p < parts.length; p += 2) {
 				parts[p] = parts[p].replace(/<FieldGuide(?=[\s>])([^>]*?)>/g, (whole, attrs) => {
-					const n = `${chapter}.${++guides}`;
+					++guides;
+					const n = guideTotal === 1 ? chapter : `${chapter}.${guides}`;
 					const idMatch = attrs.match(/\s+id="([\w-]+)"/);
 					const key = idMatch?.[1];
 					const anchor = `guide-${key ?? n.replace('.', '-')}`;
@@ -143,7 +150,7 @@ export default function figures() {
 				while ((m = re.exec(text))) {
 					const { end } = tagEnd(text, m.index);
 					const tag = text.slice(m.index, end);
-					const n = `${chapter}.${++tables}`;
+					const n = `${++tables}`;
 					const idMatch = tag.match(/\s+id="([\w-]+)"/);
 					const key = idMatch?.[1];
 					const anchor = `table-${key ?? n.replace('.', '-')}`;
@@ -156,7 +163,7 @@ export default function figures() {
 				parts[p] = out + text.slice(last);
 			}
 
-			// Pass 2: turn <Fig ref="..." /> into "Figure N.M" / "Field Guide N.M" / "Table N.M" links.
+			// Pass 2: turn <Fig ref="..." /> into "Figure N" / "Field Guide N" / "Table N" links.
 			for (let p = 0; p < parts.length; p += 2) {
 				parts[p] = parts[p].replace(/<Fig\s+ref="([\w-]+)"\s*\/>/g, (_, key) => {
 					const v = ids.get(key);

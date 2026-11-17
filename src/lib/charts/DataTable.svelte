@@ -1,5 +1,5 @@
 <!--
-	A numbered book table ("Table 2.1"): ruled like the figures, with a title above
+	A numbered table ("Table 2"): ruled like the figures, with a title above
 	and a source line below. The rows come from a CSV whose cells are already
 	formatted for display (Julia writes them), so the web page and the print
 	edition show exactly the same text.

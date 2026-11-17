@@ -3,7 +3,10 @@
 	import '#lib/styles/base.css';
 	import favicon from '#lib/assets/favicon.svg';
 	import { onNavigate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { ChartDefs } from '#charts';
+	import garamondUrl from '#lib/assets/fonts/garamond.woff2?url';
+	import playfairUrl from '#lib/assets/fonts/playfair.woff2?url';
 	import { BOOK } from '#lib/chapters.js';
 	import type { LayoutProps } from './$types';
 
@@ -12,9 +15,9 @@
 	// Cross-fade between pages where the browser supports view transitions.
 	onNavigate((navigation) => {
 		if (!document.startViewTransition) return;
-		return new Promise((resolve) => {
+		return new Promise((done) => {
 			document.startViewTransition(async () => {
-				resolve();
+				done();
 				await navigation.complete;
 			});
 		});
@@ -23,14 +26,14 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<link rel="preload" href="/fonts/garamond.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
-	<link rel="preload" href="/fonts/playfair.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+	<link rel="preload" href={garamondUrl} as="font" type="font/woff2" crossorigin="anonymous" />
+	<link rel="preload" href={playfairUrl} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
 
 <ChartDefs />
 
 <header class="running">
-	<a href="/" class="typewriter">{BOOK.title}</a>
+	<a href={resolve('/')} class="typewriter">{BOOK.title}</a>
 	<hr class="rule-thin" />
 </header>
 
@@ -38,7 +41,7 @@
 
 <footer>
 	<hr class="rule-double" />
-	<p>© {new Date().getFullYear()} {BOOK.author}</p>
+	<p>© {new Date().getFullYear()} {BOOK.author} · <a href="https://matthelm.pro">matthelm.pro</a></p>
 </footer>
 
 <style>
@@ -65,6 +68,13 @@
 		margin: 4rem auto 0;
 		padding: 0 var(--gutter) 1.5rem;
 		text-align: center;
+	}
+	footer a {
+		color: inherit;
+		text-decoration-color: var(--accent);
+	}
+	footer a:hover {
+		color: var(--accent);
 	}
 	footer p {
 		margin: 0.5rem 0 0;

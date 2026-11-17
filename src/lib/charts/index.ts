@@ -12,6 +12,7 @@ export { default as Density } from './Density.svelte';
 export { default as RunningAverage } from './RunningAverage.svelte';
 export { default as HistogramPanels } from './HistogramPanels.svelte';
 export { default as ScaleMorph } from './ScaleMorph.svelte';
+export { default as LogChart } from './LogChart.svelte';
 
 // Building blocks for one-off, article-specific charts.
 export { default as Figure } from './Figure.svelte';

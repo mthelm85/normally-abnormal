@@ -1,0 +1,19 @@
+stat,value
+fires,2661383
+acres,2.0942001453384662e8
+mean,78.68841671185493
+median,0.7212
+share_below_mean,0.9664708161132765
+top_0_1,0.6448445727243237
+top_1,0.89959458138984
+top_10,0.9814392272597594
+largest,1.054153e6
+largest_name,Smokehouse Creek
+largest_state,TX
+largest_year,2024
+largest_share,0.005033678382395618
+largest_sds,385.11674246642826
+alpha,0.6907683956561188
+alpha_xmin,100.0
+alpha_fires,75589
+years,1992–2024

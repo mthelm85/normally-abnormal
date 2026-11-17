@@ -1,0 +1,13 @@
+stat,value
+alpha_theory,1.1666413303236296
+alpha_fit,1.1252586941312968
+growth,0.03
+mean_age,33.2672
+oldest,340.0
+together_mean,134081.67337072533
+together_median,114996.97151828054
+together_top_1,0.0387681514706433
+newcomers_mean,271786.5770791385
+newcomers_median,77462.84134449705
+newcomers_top_1,0.46228595935028793
+newcomers_top_20,0.7747732668690824

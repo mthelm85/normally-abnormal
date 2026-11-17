@@ -1,8 +1,10 @@
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DBInterface = "a10d1c49-ce27-4219-8d33-6db1a4562965"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DistributionsFactories = "59240773-99cf-44c0-b278-61fee874a1c5"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"

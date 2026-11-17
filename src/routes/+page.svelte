@@ -1,402 +1,239 @@
+<!--
+	Landing page for the essay series: a masthead with the series' promise, then
+	each essay as a card with its signature chart in miniature (src/lib/thumbs.ts).
+	The old opening-cover version is kept in src/lib/legacy/BookCoverLanding.svelte.
+-->
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { BOOK, chapters, chapterWord } from '#lib/chapters.js';
+	import { resolve } from '$app/paths';
+	import { BOOK, PART, chapters, chapterWord } from '#lib/chapters.js';
+	import { THUMBS } from '#lib/thumbs.js';
 
-	const KEY = 'na-book-open';
-	let open = $state(false);
+	// Placeholder copy: rewrite freely.
+	const INTRO =
+		'People compute averages all the time, but most of the things we average are not normally distributed. ' +
+		'This series explores the implications of non-normal distributions in everyday data, and how to better analyze them.';
 
-	onMount(() => {
-		try {
-			if (sessionStorage.getItem(KEY)) open = true;
-		} catch {
-			/* storage unavailable: start closed */
-		}
-	});
-
-	function toggle() {
-		open = !open;
-		delete document.documentElement.dataset.bookOpen;
-		try {
-			if (open) sessionStorage.setItem(KEY, '1');
-			else sessionStorage.removeItem(KEY);
-		} catch {
-			/* ignore */
-		}
+	// A thumbnail path: x and y rescaled into a w × h box.
+	function shape(points: [number, number][], w: number, h: number, area: boolean) {
+		const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
+		const x0 = Math.min(...xs), x1 = Math.max(...xs);
+		const y1 = Math.max(...ys) || 1;
+		const pts = points.map(([x, y]) => `${(((x - x0) / (x1 - x0 || 1)) * w).toFixed(1)},${(h - (y / y1) * (h - 3)).toFixed(1)}`);
+		return { line: `M${pts.join('L')}`, area: area ? `M0,${h}L${pts.join('L')}L${w},${h}Z` : '' };
 	}
 
-	// A small right-skewed curve for the cover emblem (lognormal-ish shape)
-	const W = 120;
-	const H = 54;
-	const pts = Array.from({ length: 61 }, (_, i) => {
-		const x = (i / 60) * W;
+	// The series emblem: a small right-skewed curve (also the fallback thumbnail).
+	const EW = 120, EH = 54;
+	const emblem = Array.from({ length: 61 }, (_, i) => {
 		const t = 0.02 + (i / 60) * 3.2;
-		const y = Math.exp(-((Math.log(t) + 0.15) ** 2) / (2 * 0.55 ** 2)) / t;
-		return [x, y] as const;
+		return [i, Math.exp(-((Math.log(t) + 0.15) ** 2) / (2 * 0.55 ** 2)) / t] as [number, number];
 	});
-	const yMax = Math.max(...pts.map((p) => p[1]));
-	const curve = pts.map(([x, y]) => `${x.toFixed(1)},${(H - (y / yMax) * (H - 4)).toFixed(1)}`);
-	const linePath = `M${curve.join('L')}`;
-	const areaPath = `M0,${H}L${curve.join('L')}L${W},${H}Z`;
+	const mark = shape(emblem, EW, EH, true);
 
-	// Restores the open state before first paint, so a returning reader doesn't see the cover swing again
-	const restore = `<script>try{if(sessionStorage.getItem('${KEY}'))document.documentElement.dataset.bookOpen=''}catch(e){}<\/script>`;
+	const TW = 132, TH = 72;
+	const cards = $derived(
+		chapters.map((ch) => {
+			const t = THUMBS[ch.number];
+			return { ch, label: t?.label ?? 'Series emblem', ...(t ? shape(t.points, TW, TH, t.area) : shape(emblem, TW, TH, true)) };
+		})
+	);
 </script>
 
 <svelte:head>
 	<title>{BOOK.title}</title>
 	<meta name="description" content={BOOK.subtitle} />
-	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-	{@html restore}
-	<noscript><style>.book .cover{display:none}</style></noscript>
 </svelte:head>
 
 <main class="page">
-	<div class="stage" class:open>
-		<div class="book">
-			<!-- The title page (right-hand page once open) -->
-			<header class="leaf title-page">
-				<div class="leaf-inner">
-					<span class="ornament" aria-hidden="true">❦&#xFE0E;</span>
-					<h1>{BOOK.title}</h1>
-					<p class="subtitle">{BOOK.subtitle}</p>
-					<hr class="rule-double" />
-					<p class="author smallcaps">{BOOK.author}</p>
-				</div>
-			</header>
+	<header class="masthead">
+		<svg class="emblem" viewBox="0 0 {EW} {EH}" width={EW} height={EH} aria-hidden="true">
+			<path d={mark.area} style:fill="url(#dd-hatch-1)" />
+			<path d={mark.line} class="curve" />
+			<line x1="0" y1={EH} x2={EW} y2={EH} class="base" />
+		</svg>
+		<p class="kicker typewriter">An essay series</p>
+		<h1>{BOOK.title}</h1>
+		<p class="subtitle">{BOOK.subtitle}</p>
+		<p class="author smallcaps">{BOOK.author}</p>
+		<hr class="rule-double" />
+		<p class="intro">{INTRO}</p>
+	</header>
 
-			<!-- The cover: front is the cloth binding, back is the endpaper -->
-			<button
-				class="cover"
-				type="button"
-				onclick={toggle}
-				aria-label={open ? 'Close the book' : 'Open the book'}
-				aria-expanded={open}
-			>
-				<span class="face front" aria-hidden="true">
-					<span class="frame">
-						<span class="c-title">{BOOK.title}</span>
-						<svg class="emblem" viewBox="0 0 {W} {H}" width={W} height={H}>
-							<defs>
-								<pattern id="gilt-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-									<line x1="0" y1="0" x2="0" y2="4" stroke="currentColor" stroke-width="1" opacity="0.55" />
-								</pattern>
-							</defs>
-							<path d={areaPath} fill="url(#gilt-hatch)" />
-							<path d={linePath} fill="none" stroke="currentColor" stroke-width="1.6" />
-							<line x1="0" y1={H} x2={W} y2={H} stroke="currentColor" stroke-width="1" />
-						</svg>
-						<span class="c-sub">{BOOK.subtitle}</span>
-						<span class="c-author">{BOOK.author}</span>
-					</span>
-				</span>
-				<span class="face back" aria-hidden="true"></span>
-			</button>
-		</div>
-		<p class="hint typewriter" aria-hidden="true">Open the cover</p>
-	</div>
-
-	<section class="contents" aria-labelledby="contents">
-		<h2 id="contents" class="smallcaps">Contents</h2>
-		<ol>
-			{#each chapters as ch (ch.folder)}
+	<section aria-label="The essays">
+		<ol class="essays">
+			{#each cards as c (c.ch.folder)}
 				<li>
-					<a href="/{ch.slug}">
-						{#if ch.summary}
-							<span class="t">{ch.title}</span>
-							<span class="line">
-								<span class="summary">{ch.summary}</span>
-								<span class="leader" aria-hidden="true"></span>
-								<span class="num">Chapter {chapterWord(ch.number)}</span>
-							</span>
-						{:else}
-							<span class="line">
-								<span class="t">{ch.title}</span>
-								<span class="leader" aria-hidden="true"></span>
-								<span class="num">Chapter {chapterWord(ch.number)}</span>
-							</span>
-						{/if}
-					</a>
+					<svelte:element
+						this={c.ch.comingSoon ? 'div' : 'a'}
+						href={c.ch.comingSoon ? undefined : resolve('/[chapter]', { chapter: c.ch.slug })}
+						class="card"
+						class:soon={c.ch.comingSoon}
+					>
+						<svg class="thumb" viewBox="0 0 {TW} {TH}" role="img" aria-label={c.label}>
+							{#if c.area}<path d={c.area} style:fill="url(#dd-hatch-0)" class="fill" />{/if}
+							<path d={c.line} class="curve" />
+							<line x1="0" y1={TH} x2={TW} y2={TH} class="base" />
+						</svg>
+						<span class="text">
+							<span class="num typewriter">{PART} {chapterWord(c.ch.number)}{#if c.ch.comingSoon} · Coming soon{/if}</span>
+							<span class="t">{c.ch.title}</span>
+							{#if c.ch.summary}<span class="summary">{c.ch.summary}</span>{/if}
+						</span>
+					</svelte:element>
 				</li>
 			{/each}
 		</ol>
 	</section>
+
 </main>
 
 <style>
 	.page {
 		max-width: calc(var(--measure) + 2 * var(--gutter));
 		margin: 0 auto;
-		padding: 2.5rem var(--gutter) 0;
+		padding: 3rem var(--gutter) 0;
 	}
 
-	/* ---------- the book ---------- */
-	.stage {
-		--bw: min(310px, 40vw);
-		--bh: calc(var(--bw) * 1.5);
-		--cloth: #5e2a25;
-		--cloth-dark: #45201c;
-		--gilt: #d2ad62;
-		--speed: 1.15s;
-		--ease: cubic-bezier(0.6, 0.05, 0.25, 1);
-		perspective: 1800px;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		margin-bottom: 3.5rem;
-	}
-	.book {
-		position: relative;
-		width: var(--bw);
-		height: var(--bh);
-		transform-style: preserve-3d;
-		transition: transform var(--speed) var(--ease);
-	}
-	.open .book,
-	:global(html[data-book-open]) .book {
-		transform: translateX(calc(var(--bw) / 2));
-	}
-
-	/* the right-hand page */
-	.leaf {
-		position: absolute;
-		inset: 0;
-		background: #fbf8f0;
-		border-radius: 1px 3px 3px 1px;
-		box-shadow:
-			1px 1px 0 #e6dfcd,
-			2px 2px 0 #fbf8f0,
-			3px 3px 0 #e6dfcd,
-			4px 4px 0 #fbf8f0,
-			5px 5px 0 #ddd4bf,
-			8px 14px 28px rgb(38 34 28 / 0.22);
-		background-image: linear-gradient(to right, rgb(38 34 28 / 0.12), rgb(38 34 28 / 0.04) 6%, rgb(38 34 28 / 0.01) 14%, transparent 22%);
-	}
-	.leaf-inner {
-		height: 100%;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
+	/* ---------- masthead ---------- */
+	.masthead {
 		text-align: center;
-		padding: 0 calc(var(--bw) * 0.1);
+		margin-bottom: 2.8rem;
 	}
-	.ornament {
+	.emblem {
+		display: block;
+		margin: 0 auto 1.1rem;
+		width: 96px;
+		height: auto;
+	}
+	.kicker {
+		margin: 0 0 0.5rem;
+		font-size: 0.8rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 		color: var(--accent);
-		font-size: calc(var(--bw) * 0.07);
-		margin-bottom: calc(var(--bw) * 0.06);
 	}
 	h1 {
 		font-family: var(--font-head);
 		font-weight: 900;
-		font-size: calc(var(--bw) * 0.135);
-		line-height: 1.02;
+		font-size: clamp(2.4rem, 7vw, 3.6rem);
+		line-height: 1;
+		margin: 0 0 0.6rem;
 		text-wrap: balance;
-		margin: 0 0 calc(var(--bw) * 0.05);
 	}
 	.subtitle {
 		font-style: italic;
-		font-size: calc(var(--bw) * 0.056);
+		font-size: clamp(1.1rem, 2.6vw, 1.3rem);
 		line-height: 1.3;
 		color: var(--ink-soft);
+		margin: 0 auto 0.9rem;
+		max-width: 30ch;
 		text-wrap: balance;
-		margin: 0 0 calc(var(--bw) * 0.05);
-	}
-	.leaf :global(.rule-double) {
-		width: 40%;
-		margin: 0 auto;
 	}
 	.author {
-		margin: calc(var(--bw) * 0.05) 0 0;
-		font-size: calc(var(--bw) * 0.055);
+		margin: 0 0 1.2rem;
+		font-size: 1.05rem;
+		letter-spacing: 0.08em;
+	}
+	.masthead :global(.rule-double) {
+		width: 7rem;
+		margin: 0 auto 1.4rem;
+	}
+	.intro {
+		max-width: 46ch;
+		margin: 0 auto;
+		font-size: 1.12rem;
+		line-height: 1.5;
+		text-wrap: pretty;
 	}
 
-	/* the cover */
-	.cover {
-		all: unset;
-		position: absolute;
-		inset: 0;
-		cursor: pointer;
-		transform-origin: left center;
-		transform-style: preserve-3d;
-		transition:
-			transform var(--speed) var(--ease),
-			opacity var(--speed) var(--ease);
-		z-index: 2;
+	/* ---------- the essays ---------- */
+	.essays {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		border-top: 3px solid var(--rule);
 	}
-	.cover:focus-visible .front {
-		outline: 2px solid var(--gilt);
-		outline-offset: 4px;
+	.essays li {
+		border-bottom: 1px solid var(--rule);
 	}
-	.open .cover,
-	:global(html[data-book-open]) .cover {
-		transform: rotateY(-180deg);
+	.card {
+		display: grid;
+		grid-template-columns: 8.5rem 1fr;
+		align-items: center;
+		gap: 0 1.3rem;
+		padding: 1.25rem 0.2rem;
+		text-decoration: none;
+		color: inherit;
 	}
-	.face {
-		position: absolute;
-		inset: 0;
-		backface-visibility: hidden;
-		-webkit-backface-visibility: hidden;
-		border-radius: 2px 5px 5px 2px;
+	.thumb {
+		width: 100%;
+		height: auto;
+		overflow: visible;
 	}
-	.front {
-		display: flex;
-		padding: calc(var(--bw) * 0.06);
-		color: var(--gilt);
-		background:
-			linear-gradient(to right, rgb(0 0 0 / 0.35), rgb(255 255 255 / 0.06) 4%, rgb(0 0 0 / 0.12) 7%, transparent 11%),
-			repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px),
-			repeating-linear-gradient(90deg, rgb(0 0 0 / 0.04) 0 1px, transparent 1px 3px),
-			radial-gradient(ellipse at 60% 35%, var(--cloth), var(--cloth-dark));
-		box-shadow:
-			inset 0 0 0 1px rgb(0 0 0 / 0.3),
-			8px 14px 28px rgb(38 34 28 / 0.35);
+	.thumb .fill {
+		fill-opacity: 0.7;
 	}
-	.frame {
-		flex: 1;
+	.curve {
+		fill: none;
+		stroke: var(--ink);
+		stroke-width: 1.8;
+		stroke-linejoin: round;
+	}
+	.base {
+		stroke: var(--ink);
+		stroke-width: 1;
+	}
+	.text {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		justify-content: space-between;
-		text-align: center;
-		padding: calc(var(--bw) * 0.1) calc(var(--bw) * 0.06) calc(var(--bw) * 0.07);
-		margin-left: calc(var(--bw) * 0.04);
-		border: 1px solid currentColor;
-		outline: 1px solid currentColor;
-		outline-offset: -5px;
+		gap: 0.2rem;
+		min-width: 0;
 	}
-	.c-title {
+	.num {
+		font-size: 0.78rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	.t {
 		font-family: var(--font-head);
 		font-weight: 700;
-		font-size: calc(var(--bw) * 0.12);
-		line-height: 1.05;
-		letter-spacing: 0.01em;
+		font-size: 1.45rem;
+		line-height: 1.15;
 		text-wrap: balance;
-		text-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+		transition: color 0.2s;
 	}
-	.emblem {
-		width: 42%;
-		height: auto;
-	}
-	.c-sub {
-		font-family: var(--font-body);
+	.summary {
 		font-style: italic;
-		font-size: calc(var(--bw) * 0.05);
-		line-height: 1.3;
-		text-wrap: balance;
-		opacity: 0.9;
+		color: var(--ink-soft);
+		font-size: 1.04rem;
+		line-height: 1.35;
 	}
-	.c-author {
-		font-family: var(--font-body);
-		font-variant-caps: all-small-caps;
-		letter-spacing: 0.12em;
-		font-size: calc(var(--bw) * 0.065);
+	.card.soon {
+		opacity: 0.55;
 	}
-
-	/* endpaper: tiny lopsided curves on cream */
-	.back {
-		transform: rotateY(180deg);
-		background-color: #efe6d2;
-		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30'%3E%3Cpath d='M4 22 C8 22 9 8 13 8 C18 8 22 21 34 22' fill='none' stroke='%238e3b33' stroke-opacity='.28' stroke-width='1.2'/%3E%3Cpath d='M26 7 h12' stroke='%23a97c2c' stroke-opacity='.22'/%3E%3C/svg%3E"),
-			linear-gradient(to left, rgb(38 34 28 / 0.16), rgb(38 34 28 / 0.04) 7%, transparent 18%);
-		background-size: 44px 30px, 100% 100%;
-		background-position: center, 0 0;
-		box-shadow:
-			inset 0 0 0 calc(var(--bw) * 0.02) #e3d8bf,
-			-8px 14px 28px rgb(38 34 28 / 0.18);
+	.card:not(.soon):hover .t,
+	.card:focus-visible .t {
+		color: var(--accent);
+	}
+	.card:not(.soon):hover .curve {
+		stroke: var(--accent);
 	}
 
-	.hint {
-		margin: 1.2rem 0 0;
-		font-size: 0.8rem;
-		color: var(--ink-faded);
-		transition: opacity 0.4s;
-	}
-	.open .hint,
-	:global(html[data-book-open]) .hint {
-		opacity: 0;
-	}
-
-	/* phones: no room for a spread, so the cover swings away to reveal the title page */
-	@media (max-width: 640px) {
-		.stage {
-			--bw: min(300px, 76vw);
+	/* phones: thumbnail above the text */
+	@media (max-width: 520px) {
+		.card {
+			grid-template-columns: 1fr;
+			gap: 0.7rem;
 		}
-		.open .book,
-		:global(html[data-book-open]) .book {
-			transform: none;
-		}
-		.open .cover,
-		:global(html[data-book-open]) .cover {
-			transform: rotateY(-115deg);
-			opacity: 0;
-			pointer-events: none;
+		.thumb {
+			max-width: 11rem;
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.book,
-		.cover {
+		.t {
 			transition: none;
 		}
-	}
-
-	/* ---------- contents ---------- */
-	.contents h2 {
-		text-align: center;
-		font-family: var(--font-head);
-		font-size: 1.3rem;
-		margin-bottom: 1.2rem;
-	}
-	/* A printed table of contents: the title, then the summary with a dotted leader
-	   running to the chapter number, where a page number would sit. */
-	ol {
-		list-style: none;
-		padding: 0.4rem 0 0;
-		margin: 0;
-		border-top: 1px solid var(--rule);
-	}
-	li a {
-		display: block;
-		padding: 0.75rem 0;
-		text-decoration: none;
-	}
-	.line {
-		display: flex;
-		align-items: last baseline;
-		gap: 0.5rem;
-	}
-	.t {
-		display: block;
-		font-family: var(--font-head);
-		font-weight: 700;
-		font-size: 1.3rem;
-		line-height: 1.2;
-		text-wrap: balance;
-		transition: color 0.2s;
-	}
-	.leader {
-		flex: 1;
-		min-width: 1.5rem;
-		/* sits on the text baseline, level with the periods */
-		border-bottom: 2px dotted var(--ink-faded);
-		margin-bottom: 0.32em;
-	}
-	.num {
-		flex: none;
-		font-variant-caps: all-small-caps;
-		letter-spacing: 0.06em;
-		font-size: 1.15rem;
-		color: var(--ink-soft);
-	}
-	.summary {
-		margin-top: 0.15rem;
-		font-style: italic;
-		color: var(--ink-soft);
-		font-size: 1.02rem;
-		line-height: 1.35;
-	}
-	li a:hover .t,
-	li a:focus-visible .t {
-		color: var(--accent);
 	}
 </style>

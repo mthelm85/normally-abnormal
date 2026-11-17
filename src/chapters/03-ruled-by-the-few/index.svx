@@ -1,0 +1,186 @@
+---
+number: 3
+title: "Ruled by the Few"
+summary: "How a handful of extreme cases set the mean."
+status: coming-soon
+---
+
+<script>
+	import { Density, ScaleMorph, DataTable, HistogramPanels, DrawStrips, LineChart, LogChart } from '#charts';
+	import { Note } from '#lib/notes/index.js';
+	import { FieldGuide, Check, Section, AppliedGuide, Verdict, Step } from '#lib/fieldguide';
+	// Data: julia/ch03.jl writes everything in ./data (run `julia --project ch03.jl`).
+	const stats = (rows) => Object.fromEntries(rows.map((r) => [r.stat, r.value]));
+	import fireStatsRows from './data/fires-stats.csv';
+	import fireConcentration from './data/fires-concentration.csv';
+	import fireMorph from './data/fires-morph.csv';
+	import fireRank from './data/fires-rank.csv';
+	import fireRunning from './data/fires-running.csv';
+	import wealthStatsRows from './data/wealth-stats.csv';
+	import cityRank from './data/cities-rank.csv';
+	import cityStatsRows from './data/cities-stats.csv';
+	import newcomerRank from './data/newcomers-rank.csv';
+	import newcomerStatsRows from './data/newcomers-stats.csv';
+	import sharesTable from './data/shares-table.csv';
+	const fs = stats(fireStatsRows);
+	const ws = stats(wealthStatsRows);
+	const cs = stats(cityStatsRows);
+	const ns = stats(newcomerStatsRows);
+	const fireConcentrationTop = fireConcentration.filter((d) => d.share_fires <= 10);
+	// Labels at the top 0.1% and top 1% of fires (the rows nearest those shares).
+	const nearest = (v) =>
+		fireConcentrationTop.reduce((a, b) => (Math.abs(b.share_fires - v) < Math.abs(a.share_fires - v) ? b : a));
+	const concentrationNotes = [0.1, 1].map((v) => {
+		const d = nearest(v);
+		return { x: d.share_fires, text: `Top ${v}% of fires burn ${Math.round(d.share_acres)}%`, dx: 14, dy: 22 };
+	});
+</script>
+
+<!--
+	Chapter plan: book plan, "Ch 3 — Ruled by the Few" tab.
+	Order: fires open, wealth recalls Chapter 1, cities and towns show the shape,
+	Chapter 2's raises plus newcomers show the mechanism, and the fire tail's bend
+	bridges to Chapter 4. Figure titles below are working titles.
+	Stats for the prose: fs.* (fires), ws.* (wealth), cs.* (cities), ns.* (newcomers).
+-->
+
+<!-- ——— Part 1: The question — "How big is the average wildfire?" (mean vs. median) ——— -->
+
+<!-- ——— Part 2: The surprise — who burns the land; the wealth callback; Chapter 2's fix fails ——— -->
+One of the best aspects of living in the Pacific Northwest region of the United States is the awe-inspiring natural beauty in its landscapes. The region boasts snow-capped mountains, temperate rainforests, inland and coastal seas, and extensive evergreen forests. Hiking through these forests is a popular pastime, one that my family and I enjoy throughout the year. As with anything in life, though, there are pros and cons to living near such expansive wooded areas, and one of the primary drawbacks is that the region experiences seasonal wildfires that displace people, cause widespread damage, and create dangerous air quality problems. 
+
+Most wildfires are quite small, and run their course without causing much trouble. A small percentage, though, are very large and have enormous impacts. These relatively rare extreme fires pull the average so far away from the center of the distribution that we end up with a number that doesn't contain much useful information. The U.S. Department of Agriculture's Forest Service publishes wildfire data, and for the period covering 1992 - 2024, the mean wildfire burned 79 acres, but the top 0.1% of fires were responsible for burning 64% of the total acres, while the top 1% burned 90% of all acres. The median fire burned just 0.7 acres, roughly one one-hundredth of the mean value. 
+
+<LineChart
+	id="fires-concentration"
+	data={fireConcentrationTop}
+	x="share_fires"
+	y="share_acres"
+	labels={{ share_acres: 'U.S. wildfires' }}
+	notes={concentrationNotes}
+	curve="linear"
+	zero
+	yDomain={[0, 100]}
+	xLabel="Share of fires, largest first (%)"
+	yLabel="Share of all acres burned (%)"
+	title="A Sliver of Fires Burns Almost All the Land"
+	source="Short, Spatial wildfire occurrence data for the United States, 7th ed., USDA Forest Service"
+	period="1992–2024"
+	note="Each point on the curve shows the share of all acres burned by the largest fires, up to the share of fires on the horizontal axis"
+/>
+
+You can see in <Fig ref="fires-concentration" /> that a very small slice of all wildfires are responsible for the vast majority of all the acres burned in the data. Notice that the horizontal axis stops at 10%, and that the value on the vertical axis at this point is more than 98%. This is what statisticians mean when they say that a distribution has a *heavy tail*, and it completely breaks our no *giants test* from Field Guide 1.1. For example, a single wildfire in Texas burned more than one *million* acres in 2024. Other data exhibit this same phenomenon --- our household net worth data from Chapter 1 are similar, and city and town populations tend to exhibit a similar pattern too. <Fig ref="shares-table" /> demonstrates this:
+
+<DataTable
+	id="shares-table"
+	data={sharesTable}
+	title="Who Holds the Total"
+	source="USDA Forest Service wildfire records, 1992–2024; Federal Reserve Survey of Consumer Finances, 2022; U.S. Census Bureau population estimates, 2025"
+	note="City or town population covers incorporated places. The Survey of Consumer Finances excludes the Forbes 400"
+/>
+
+In Chapter 2, we saw how log transformations can sometimes "fix" skewed data, and reporting the median as well as a simple measure of the spread can help us compare distributions and understand their shape. Unfortunately, these approaches alone won't fix data that follow very extreme distributions, and we'll need to do more. <Fig ref="fires-morph" /> shows the log transform in action, and you can see that we still have a right-skewed distribution on the log scale: 
+
+<ScaleMorph
+	id="fires-morph"
+	data={fireMorph}
+	x="x"
+	y="density"
+	labels={{ density: 'Wildfires' }}
+	below="share_below"
+	median={fs.median}
+	mean={fs.mean}
+	mode={false}
+	linearDomain={[0, 500]}
+	logDomain={[0.01, 2000000]}
+	logTicks={[0.01, 1, 100, 10000, 1000000]}
+	xLabel="Fire size (acres)"
+	ends={['Acres', 'Multiples']}
+	title="The Log Scale Doesn't Bring the Bell Back"
+	source="Short, Spatial wildfire occurrence data for the United States, 7th ed., USDA Forest Service"
+	period="1992–2024"
+	note="Many fire sizes are recorded as round numbers (0.1, 0.5, 1 acre), so the curve is smoothed widely enough that those heaps do not show up as false peaks"
+/>
+
+You may be thinking that if we could just get rid of that tail in <Fig ref="fires-morph" />, we would have something that looks a lot like a bell curve, and you would be correct. What this suggests is the need to treat the tail separately. 
+
+<!-- ——— Part 3: Why it happens — a new picture: rank against size; the Pareto tail ——— -->
+
+<LogChart
+	id="cities-rank"
+	data={cityRank}
+	x="population"
+	series={[
+		{ y: 'rank', label: 'Cities and towns', mark: 'points' },
+		{ y: 'lognormal', label: 'Lognormal fit', mark: 'line' },
+		{ y: 'pareto', label: 'Power law above 50,000', mark: 'dashed' }
+	]}
+	yDomain={[0.7, 30000]}
+	xLabel="Population"
+	yLabel="Rank (1 = largest)"
+	title="Small Towns Curve; Big Cities Line Up"
+	source="U.S. Census Bureau, Vintage 2025 population estimates"
+	period="July 1, 2025"
+	note="Both axes are log scales. Incorporated places only (cities, towns, villages, and boroughs)"
+/>
+
+<!-- ——— Part 4: Watch it happen — Chapter 2's raises plus a steady stream of newcomers ——— -->
+
+<LogChart
+	id="newcomers-rank"
+	data={newcomerRank}
+	x="newcomers"
+	series={[
+		{ y: 'rank', x: 'together', label: 'Everyone starts together', mark: 'points' },
+		{ y: 'rank', x: 'newcomers', label: 'A steady stream of newcomers', mark: 'points' },
+		{ y: 'pareto', x: 'newcomers', label: 'Power law', mark: 'dashed', color: 2 }
+	]}
+	xFormat="$.2~s"
+	xLabel="Salary"
+	yLabel="Rank (1 = highest)"
+	title="Add Newcomers, and the Curve Straightens"
+	source="Simulation"
+	note="Both populations get Part Two's random raises (average 2.5%, varying by about 9 percentage points). In one, all 10,000 start together and are seen after 40 years; in the other, the population grows 3% a year through newcomers starting at $50,000. Both axes are log scales"
+/>
+
+<!-- ——— Part 5: What to say instead — the fragile mean; better summaries; the verdict; the edge ——— -->
+
+<LogChart
+	id="fires-running"
+	data={fireRunning}
+	x="year"
+	xLog={false}
+	series={[
+		{ y: 'mean', label: 'Mean', mark: 'line' },
+		{ y: 'median', label: 'Median', mark: 'line' }
+	]}
+	xDomain={[1992, 2025]}
+	xTicks={[1995, 2000, 2005, 2010, 2015, 2020, 2025]}
+	xFormat="d"
+	yDomain={[0.3, 150]}
+	yTicks={[0.5, 1, 2, 5, 10, 20, 50, 100]}
+	xLabel="Fires counted through"
+	yLabel="Fire size so far (acres)"
+	title="The Mean Keeps Climbing; the Median Holds"
+	source="Short, Spatial wildfire occurrence data for the United States, 7th ed., USDA Forest Service"
+	period="1992–2024"
+	note="Mean and median size of all fires discovered from January 1992 through the end of each month. The vertical axis is a log scale"
+/>
+
+<LogChart
+	id="fires-rank"
+	data={fireRank}
+	x="acres"
+	series={[
+		{ y: 'rank', label: 'Wildfires', mark: 'points' },
+		{ y: 'pareto', label: 'Power law above 100 acres', mark: 'dashed', color: 2 }
+	]}
+	xDomain={[0.05, 3000000]}
+	yDomain={[0.7, 4000000]}
+	xLabel="Fire size (acres)"
+	yLabel="Rank (1 = largest)"
+	title="A Long Straight Run, Then the Edge"
+	source="Short, Spatial wildfire occurrence data for the United States, 7th ed., USDA Forest Service"
+	period="1992–2024"
+	note="Both axes are log scales. The dashed line is a power law fitted to fires of 100 acres or more"
+/>

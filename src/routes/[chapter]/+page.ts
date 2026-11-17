@@ -7,7 +7,7 @@ export const entries: EntryGenerator = () => chapters.map(({ slug }) => ({ chapt
 export const load: PageLoad = async ({ params }) => {
 	const i = chapters.findIndex((c) => c.slug === params.chapter);
 	if (i < 0) error(404, 'No such chapter');
-	const Body = await loadBody(chapters[i].folder);
+	const Body = chapters[i].comingSoon ? undefined : await loadBody(chapters[i].folder);
 	return {
 		chapter: chapters[i],
 		Body,

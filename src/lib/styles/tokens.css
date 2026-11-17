@@ -26,7 +26,6 @@
 	--accent: var(--oxblood);
 
 	/* Type */
-	--font-masthead: 'Birmingham Titling', serif; /* masthead only — never reuse */
 	--font-head: 'Playfair Display', Georgia, serif;
 	--font-body: 'EB Garamond', Georgia, serif;
 	--font-type: 'Typewriter Condensed', 'Courier New', monospace;

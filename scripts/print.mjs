@@ -41,6 +41,7 @@ const CHARTS = [
 	'Dumbbell',
 	'HistogramPanels',
 	'LineChart',
+	'LogChart',
 	'Radar',
 	'RunningAverage',
 	'ScaleMorph',

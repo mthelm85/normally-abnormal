@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { BOOK, chapterWord } from '#lib/chapters.js';
+	import { resolve } from '$app/paths';
+	import { BOOK, PART, chapterWord } from '#lib/chapters.js';
 	import { NotesScope } from '#lib/notes/index.js';
 	import type { PageProps } from './$types';
 
@@ -14,7 +15,7 @@
 
 <main class="page">
 	<header class="head">
-		<p class="num typewriter">Chapter {chapterWord(chapter.number)}</p>
+		<p class="num typewriter">{PART} {chapterWord(chapter.number)}</p>
 		<h1>{chapter.title}</h1>
 		<hr class="rule-double" />
 	</header>
@@ -22,26 +23,28 @@
 	{#key chapter.slug}
 		<NotesScope>
 			<article class="prose">
-				{#if Body}<Body />{/if}
+				{#if chapter.comingSoon}
+					<p class="soon">Coming soon.</p>
+				{:else if Body}<Body />{/if}
 			</article>
 		</NotesScope>
 	{/key}
 
 	<nav class="more">
 		{#if prev}
-			<a href="/{prev.slug}" class="prev">
-				<span class="label typewriter">☜ Chapter {chapterWord(prev.number)}</span>
+			<a href={resolve('/[chapter]', { chapter: prev.slug })} class="prev">
+				<span class="label typewriter">← {PART} {chapterWord(prev.number)}</span>
 				<span class="t">{prev.title}</span>
 			</a>
 		{:else}
-			<a href="/" class="prev">
-				<span class="label typewriter">☜ Contents</span>
+			<a href={resolve('/')} class="prev">
+				<span class="label typewriter">← Contents</span>
 				<span class="t">{BOOK.title}</span>
 			</a>
 		{/if}
 		{#if next}
-			<a href="/{next.slug}" class="next">
-				<span class="label typewriter">Chapter {chapterWord(next.number)} ☞</span>
+			<a href={resolve('/[chapter]', { chapter: next.slug })} class="next">
+				<span class="label typewriter">{PART} {chapterWord(next.number)} →</span>
 				<span class="t">{next.title}</span>
 			</a>
 		{/if}
@@ -102,5 +105,12 @@
 	}
 	.more a:hover .t {
 		color: var(--accent);
+	}
+	.soon {
+		text-align: center;
+		font-style: italic;
+		font-size: 1.3rem;
+		color: var(--ink-soft);
+		margin: 3rem 0;
 	}
 </style>

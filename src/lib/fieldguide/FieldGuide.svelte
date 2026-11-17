@@ -1,6 +1,6 @@
 <!--
 	A Field Guide card: practical reference material set apart from the prose,
-	numbered by chapter ("Field Guide 1.1") and meant to be returned to.
+	numbered by its essay's part ("Field Guide 1") and meant to be returned to.
 
 	<FieldGuide id="bell-check" title="Should I Expect a Bell Curve?">
 		<Check label="Many pieces">Is each value built from many contributions?</Check>
