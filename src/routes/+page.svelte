@@ -5,7 +5,8 @@
 -->
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { BOOK, PART, chapters, chapterWord } from '#lib/chapters.js';
+	import { BOOK, PART, chapters, chapterWord, pageUrl } from '#lib/chapters.js';
+	import Seo from '#lib/seo/Seo.svelte';
 	import { THUMBS } from '#lib/thumbs.js';
 
 	// Placeholder copy: rewrite freely.
@@ -30,6 +31,21 @@
 	});
 	const mark = shape(emblem, EW, EH, true);
 
+	const jsonld = {
+		'@context': 'https://schema.org',
+		'@type': 'CreativeWorkSeries',
+		name: BOOK.title,
+		alternativeHeadline: BOOK.subtitle,
+		description: INTRO,
+		url: pageUrl(),
+		image: pageUrl('og/home.png'),
+		inLanguage: 'en',
+		author: { '@type': 'Person', name: BOOK.author, url: BOOK.authorUrl },
+		hasPart: chapters
+			.filter((c) => !c.comingSoon)
+			.map((c) => ({ '@type': 'Article', headline: c.title, url: pageUrl(c.slug), position: c.number }))
+	};
+
 	const TW = 132, TH = 72;
 	const cards = $derived(
 		chapters.map((ch) => {
@@ -39,10 +55,14 @@
 	);
 </script>
 
-<svelte:head>
-	<title>{BOOK.title}</title>
-	<meta name="description" content={BOOK.subtitle} />
-</svelte:head>
+<Seo
+	title="{BOOK.title}: {BOOK.subtitle}"
+	description={INTRO}
+	url={pageUrl()}
+	image={pageUrl('og/home.png')}
+	imageAlt="{BOOK.title}: {BOOK.subtitle}, an essay series by {BOOK.author}"
+	{jsonld}
+/>
 
 <main class="page">
 	<header class="masthead">

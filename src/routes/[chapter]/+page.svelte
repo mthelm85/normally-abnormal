@@ -1,22 +1,58 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { BOOK, PART, chapterWord } from '#lib/chapters.js';
+	import { BOOK, PART, chapterWord, longDate, pageUrl } from '#lib/chapters.js';
+	import Seo from '#lib/seo/Seo.svelte';
 	import { NotesScope } from '#lib/notes/index.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	const { chapter, Body, prev, next } = $derived(data);
+
+	const url = $derived(pageUrl(chapter.slug));
+	const image = $derived(pageUrl(`og/${chapter.slug}.png`));
+	const label = $derived(`${PART} ${chapterWord(chapter.number)}`);
+	const jsonld = $derived({
+		'@context': 'https://schema.org',
+		'@type': 'Article',
+		headline: chapter.title,
+		alternativeHeadline: `${BOOK.title}, ${label}`,
+		description: chapter.summary,
+		url,
+		mainEntityOfPage: url,
+		image,
+		inLanguage: 'en',
+		author: { '@type': 'Person', name: BOOK.author, url: BOOK.authorUrl },
+		...(chapter.date && { datePublished: chapter.date, dateModified: chapter.updated ?? chapter.date }),
+		isPartOf: { '@type': 'CreativeWorkSeries', name: BOOK.title, url: pageUrl() },
+		position: chapter.number
+	});
 </script>
 
-<svelte:head>
-	<title>{chapter.title} · {BOOK.title}</title>
-	{#if chapter.summary}<meta name="description" content={chapter.summary} />{/if}
-</svelte:head>
+<Seo
+	title="{chapter.title} · {BOOK.title}"
+	description={chapter.summary || BOOK.subtitle}
+	{url}
+	{image}
+	imageAlt="{BOOK.title}, {label}: {chapter.title}"
+	type="article"
+	published={chapter.date}
+	modified={chapter.updated ?? chapter.date}
+	noindex={chapter.comingSoon}
+	jsonld={chapter.comingSoon ? undefined : jsonld}
+/>
 
 <main class="page">
 	<header class="head">
 		<p class="num typewriter">{PART} {chapterWord(chapter.number)}</p>
 		<h1>{chapter.title}</h1>
+		{#if chapter.date && !chapter.comingSoon}
+			<p class="date typewriter">
+				<time datetime={chapter.date}>{longDate(chapter.date)}</time>
+				{#if chapter.updated && chapter.updated !== chapter.date}
+					· updated <time datetime={chapter.updated}>{longDate(chapter.updated)}</time>
+				{/if}
+			</p>
+		{/if}
 		<hr class="rule-double" />
 	</header>
 
@@ -112,5 +148,12 @@
 		font-size: 1.3rem;
 		color: var(--ink-soft);
 		margin: 3rem 0;
+	}
+	.date {
+		margin: 0 0 0.9rem;
+		font-size: 0.8rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-faded);
 	}
 </style>

@@ -1,6 +1,7 @@
 ---
 number: 1
 title: "The Average Millionaire"
+date: "2026-11-17"
 summary: "Why we ask for the average, where it makes sense to use it, and the fine print."
 ---
 

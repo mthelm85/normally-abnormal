@@ -1,6 +1,7 @@
 ---
 number: 2
 title: "A Lopsided Victory"
+date: "2026-11-17"
 summary: "How skew pulls the mean away from the typical case."
 ---
 
